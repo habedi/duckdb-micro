@@ -95,7 +95,8 @@ class ScriptTests(unittest.TestCase):
                 preserved = ("build/espressif/tool", "build/hardware/backup.bin",
                              "build/build.log", "external/duckdb/source.cpp")
                 generated = ("build/test/test_binary", "build/duckdb/library.a",
-                             "build/firmware/firmware.bin", "build/shell/shell.bin")
+                             "build/firmware/firmware.bin", "build/shell/shell.bin",
+                             "build/duckdb-micro-shell.tar.gz", "build/duckdb-micro-probe.tar.gz")
                 for name in preserved + generated:
                     path = root / name
                     path.parent.mkdir(parents=True, exist_ok=True)
