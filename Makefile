@@ -10,10 +10,16 @@ PYTHON ?= python3
 
 FORMAT_FILES := $(wildcard src/firmware/main/*.cpp src/firmware/shell/main/*.cpp src/firmware/shell/main/duckdb_console.h test/*.cpp)
 
-.PHONY: help submodules probe-build shell-build shell-flash flash probe-flash console check-shell check-probe espidf-install test probe-test shell-test format lint setup-hooks test-hooks
+.PHONY: help clean clean-all submodules probe-build shell-build shell-flash flash probe-flash console check-shell check-probe espidf-install test probe-test shell-test format lint setup-hooks test-hooks
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' Makefile
+
+clean: ## Remove host test binaries; keep the files in `build/` directory
+	rm -rf -- build/test
+
+clean-all: clean ## Also remove DuckDB and firmware builds; keep tools, logs, and backups
+	rm -rf -- build/duckdb build/firmware build/shell
 
 submodules: ## Initialize and update Git submodules recursively
 	git submodule update --init --recursive --depth 1

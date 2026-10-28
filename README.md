@@ -23,7 +23,7 @@ See the [ROADMAP.md](ROADMAP.md) for the list of implemented and planned feature
 
 ### Quickstart
 
-To follow the steps below, you need to have [Nix](https://nixos.org/download/) installed on your machine.
+To follow the steps below, you need to have [Nix](https://nixos.org/download/) (with flakes enabled) installed on your machine.
 The instructions are tested on Linux, and the firmware is tested on an ESP32-P4-WIFI6 board with silicon revision v1.3 with 32 MB PSRAM and 32 MB
 NOR flash.
 
@@ -69,6 +69,12 @@ Press Enter twice after opening the console to get to the MicroShell (`msh>`) pr
 ### Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to make a contribution.
+
+### Build Cleanup
+
+`make clean` removes host test binaries and keeps the DuckDB and firmware builds for faster incremental builds.
+`make clean-all` also removes the DuckDB and firmware build directories, so the next firmware build can take a long time.
+Both commands preserve installed toolchains, hardware logs, flash backups, and the applied DuckDB patch in `external/duckdb`.
 
 ### License
 

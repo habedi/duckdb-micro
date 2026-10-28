@@ -83,6 +83,27 @@ class ScriptTests(unittest.TestCase):
             subprocess.run(["bash", str(root / "scripts/build-shell.sh")], check=True)
             self.assertTrue((root / "build/refreshed").is_file())
 
+    def test_clean_targets_preserve_tools_logs_backups_and_sources(self):
+        for target in ("clean", "clean-all"):
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                shutil.copyfile(ROOT / "Makefile", root / "Makefile")
+                preserved = ("build/espressif/tool", "build/hardware/backup.bin",
+                             "build/build.log", "external/duckdb/source.cpp")
+                generated = ("build/test/test_binary", "build/duckdb/library.a",
+                             "build/firmware/firmware.bin", "build/shell/shell.bin")
+                for name in preserved + generated:
+                    path = root / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text("fixture")
+                for _ in range(2):
+                    subprocess.run(["make", target], cwd=root, check=True, capture_output=True)
+                for name in preserved:
+                    self.assertEqual((root / name).read_text(), "fixture")
+                for name in generated:
+                    removed = target == "clean-all" or name.startswith("build/test/")
+                    self.assertEqual((root / name).exists(), not removed)
+
 
 if __name__ == "__main__":
     unittest.main()
