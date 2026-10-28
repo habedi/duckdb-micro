@@ -47,7 +47,7 @@ shell-flash: ## Flash the shell firmware to the ESP32-P4 (e.g. make flash TTY=/d
 flash: shell-flash ## Alias for shell-flash
 
 console: ## Connect to ESP32-P4 serial console (e.g. make console [TTY=/dev/ttyACM0])
-	$(PYTHON) -m serial.tools.miniterm $(TTY) $(BAUD)
+	$(PYTHON) -m serial.tools.miniterm --raw $(TTY) $(BAUD)
 
 check-shell: ## Run hardware serial check for the shell (e.g. make check-shell [TTY=/dev/ttyACM0])
 	@export IDF_PATH="$${IDF_PATH:-$(CURDIR)/external/esp-idf}"; \
