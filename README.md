@@ -2,6 +2,7 @@
 
 [![Tests](https://img.shields.io/github/actions/workflow/status/habedi/duckdb-micro/tests.yml?label=tests&style=flat&labelColor=282c34&logo=github&logoColor=white)](https://github.com/habedi/duckdb-micro/actions/workflows/tests.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-007ec6?style=flat&labelColor=282c34&logo=open-source-initiative&logoColor=white)](https://github.com/habedi/duckdb-micro/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/habedi/duckdb-micro?include_prereleases&label=release&style=flat&labelColor=282c34&logo=github&sort=semver)](https://github.com/habedi/duckdb-micro/releases)
 
 ---
 
