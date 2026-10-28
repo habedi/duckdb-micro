@@ -1,12 +1,5 @@
 ## Feature Roadmap
 
-This document includes the development roadmap for DuckDB Micro, an experimental port of DuckDB 2.0 to the Waveshare ESP32-P4-WIFI6 board.
-
-> [!IMPORTANT]
-> This roadmap is a work in progress and is subject to change.
-
----
-
 ### 1. Core SQL Engine & Portability
 
 * **Toolchain & Cross-Compilation**

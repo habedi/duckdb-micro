@@ -1,41 +1,49 @@
 ## DuckDB Micro
 
-An experimental DuckDB 2.0 port to ESP32-P4 (the Waveshare ESP32-P4-WIFI6).
+[![Tests](https://img.shields.io/github/actions/workflow/status/habedi/duckdb-micro/tests.yml?label=tests&style=flat&labelColor=282c34&logo=github&logoColor=white)](https://github.com/habedi/duckdb-micro/actions/workflows/tests.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-007ec6?style=flat&labelColor=282c34&logo=open-source-initiative&logoColor=white)](https://github.com/habedi/duckdb-micro/blob/main/LICENSE)
+
+---
+
+DuckDB Micro is an experimental DuckDB 2.0 port to ESP32-P4 (more specifically, the [Waveshare ESP32-P4-WIFI6](https://www.waveshare.com/wiki/ESP32-P4-WIFI6) board; see image below).
+
+<div align="center">
+  <img alt="MicroShell" src="docs/assets/images/esp32-p4-wifi6.png" width="40%">
+</div>
+
+### Why?
+
+DuckDB normally needs at least 125 MB of RAM per thread to work properly, and it officially only supports 64-bit architectures.
+This project is an attempt to see how much of DuckDB's functionality can be made available on a low-resource device like an ESP32 microcontroller that
+lacks a lot of conventional features like a lot of (fast) memory, a full-featured virtual memory system, etc.
 
 See the [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
-
-> [!IMPORTANT]
-> This project is in early development, so bugs and breaking changes are expected.
-> Please use the [issues page](https://github.com/idea-playground/duckdb-micro/issues) to report bugs or request features.
 
 ---
 
 ### Quickstart
 
 To follow the steps below, you need to have [Nix](https://nixos.org/download/) installed on your machine.
-The target hardware is the Waveshare ESP32-P4-WIFI6 (silicon revision v1.3 with 32 MB PSRAM and 32 MB flash).
+The instructions are tested on Linux, and the firmware is tested on an ESP32-P4-WIFI6 board with silicon revision v1.3 with 32 MB PSRAM and 32 MB
+NOR flash.
 
-#### 1. Clone the repository and initialize submodules
-
-```shell
-git clone https://github.com/idea-playground/duckdb-micro.git
-cd duckdb-micro
-make submodules
-```
-
-#### 2. Set up the development environment
+#### 1. Set up the development environment
 
 ```shell
 nix develop
-make espidf-install
 ```
 
-> [!NOTE]
-> Serial port access needs membership in the `dialout` group (which can be set up with `sudo usermod -aG dialout $USER`).
-
-#### 3. Build the firmware
+#### 2. Clone the repository
 
 ```shell
+git clone --depth=1 --recursive https://github.com/habedi/duckdb-micro.git
+cd duckdb-micro
+```
+
+#### 3. Build the (MicroShell) firmware
+
+```shell
+make espidf-install
 make shell-build
 ```
 
@@ -45,6 +53,17 @@ make shell-build
 make flash TTY=/dev/ttyACM0
 make console TTY=/dev/ttyACM0
 ```
+
+Press Enter twice after opening the console to get to the MicroShell (`msh>`) prompt.
+
+<div align="center">
+  <img alt="MicroShell" src="docs/assets/images/msh-01.png" width="80%">
+</div>
+
+> [!NOTE]
+> Serial port access needs membership in the `dialout` group (which can be set up with something like `sudo usermod -aG dialout $USER`).
+> Also, change `ttyACM0` to the appropriate serial port for your system, if needed.
+
 ---
 
 ### Contributing
