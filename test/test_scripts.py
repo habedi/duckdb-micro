@@ -2,12 +2,15 @@
 
 import importlib.util
 import io
+import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
+import textwrap
 import unittest
 from unittest.mock import MagicMock, Mock, patch
 
@@ -148,6 +151,65 @@ class ScriptTests(unittest.TestCase):
                     self.assertEqual(arguments[arguments.index("--after") + 1], "hard-reset")
                     self.assertEqual(arguments[arguments.index("--port") + 1], "fake-port")
                     self.assertEqual(arguments[-2:], ["write-flash", "@flash_args"])
+
+    def test_firmware_packages_include_all_flashing_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copyfile(ROOT / "Makefile", root / "Makefile")
+            for build, target in (("shell", "shell"), ("firmware", "probe")):
+                names = ("flash_args", f"duckdb_{target}.bin", "bootloader/bootloader.bin",
+                         "partition_table/partition-table.bin")
+                for name in names:
+                    path = root / "build" / build / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(name)
+            subprocess.run(["make", "firmware-package"], cwd=root,
+                           check=True, capture_output=True)
+            for target in ("shell", "probe"):
+                with tarfile.open(root / f"build/duckdb-micro-{target}.tar.gz") as archive:
+                    names = {"flash_args", f"duckdb_{target}.bin", "bootloader/bootloader.bin",
+                             "partition_table/partition-table.bin"}
+                    self.assertEqual(set(archive.getnames()), names)
+                    for name in names:
+                        self.assertEqual(archive.extractfile(name).read().decode(), name)
+
+    def test_tag_release_creates_or_updates_only_drafts(self):
+        workflow = (ROOT / ".github/workflows/tests.yml").read_text()
+        step = workflow.split("      - name: Create or update draft release\n", 1)[1]
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        for state in ("missing", "draft", "published"):
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                gh = root / "gh"
+                gh.write_text(f"#!{sys.executable}\n" + textwrap.dedent('''\
+                    import json, os, sys
+                    from pathlib import Path
+                    with Path("calls.jsonl").open("a") as log:
+                        log.write(json.dumps(sys.argv[1:]) + "\\n")
+                    if sys.argv[1:3] == ["release", "view"]:
+                        state = os.environ["RELEASE_STATE"]
+                        if state == "missing":
+                            sys.exit(1)
+                        print("true" if state == "draft" else "false")
+                    '''))
+                gh.chmod(0o755)
+                (root / "firmware").mkdir()
+                (root / "firmware/shell.tar.gz").touch()
+                env = dict(os.environ, PATH=str(root) + os.pathsep + os.environ["PATH"],
+                           RELEASE_STATE=state, RELEASE_TAG="v1.2.3")
+                subprocess.run(["bash", "-e", "-o", "pipefail", "-c", script], cwd=root,
+                               env=env, check=True, capture_output=True)
+                calls = [json.loads(line) for line in (root / "calls.jsonl").read_text().splitlines()]
+                expected = ["view", "create", "upload"] if state == "missing" else (
+                    ["view", "upload"] if state == "draft" else ["view"])
+                self.assertEqual([call[1] for call in calls], expected)
+                self.assertTrue(all(call[2] == "v1.2.3" for call in calls))
+                if state == "missing":
+                    self.assertIn("--draft", calls[1])
+                    self.assertIn("--verify-tag", calls[1])
+                if state != "published":
+                    self.assertIn("--clobber", calls[-1])
+                    self.assertIn("firmware/shell.tar.gz", calls[-1])
 
 
 if __name__ == "__main__":

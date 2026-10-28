@@ -10,7 +10,7 @@ PYTHON ?= python3
 
 FORMAT_FILES := $(wildcard src/firmware/main/*.cpp src/firmware/shell/main/*.cpp src/firmware/shell/main/duckdb_console.h test/*.cpp)
 
-.PHONY: help clean clean-all submodules probe-build shell-build shell-flash flash probe-flash console check-shell check-probe espidf-install test probe-test shell-test format lint setup-hooks test-hooks
+.PHONY: help clean clean-all submodules probe-build shell-build firmware-package shell-flash flash probe-flash console check-shell check-probe espidf-install test probe-test shell-test format lint setup-hooks test-hooks
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' Makefile
@@ -36,6 +36,10 @@ probe-flash: ## Flash the standalone SQL probe firmware (e.g. make probe-flash T
 
 shell-build: ## Build the shell firmware with interactive DuckDB
 	bash scripts/build-shell.sh
+
+firmware-package: ## Package existing shell and probe builds with their flashing files
+	tar -czf build/duckdb-micro-shell.tar.gz -C build/shell flash_args duckdb_shell.bin bootloader/bootloader.bin partition_table/partition-table.bin
+	tar -czf build/duckdb-micro-probe.tar.gz -C build/firmware flash_args duckdb_probe.bin bootloader/bootloader.bin partition_table/partition-table.bin
 
 shell-flash: ## Flash the shell firmware to the ESP32-P4 (e.g. make flash TTY=/dev/ttyACM0)
 	@if [ ! -f build/shell/flash_args ]; then $(MAKE) shell-build; fi
