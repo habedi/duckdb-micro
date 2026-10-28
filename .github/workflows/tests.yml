@@ -86,9 +86,7 @@ jobs:
             firmware-ubuntu-24.04-${{ runner.arch }}-${{ steps.idf.outputs.revision }}-
 
       - name: Install ESP-IDF tools and Espressif Clang
-        run: |
-          nix develop -c make espidf-install
-          nix develop -c python3 external/esp-idf/tools/idf_tools.py install esp-clang
+        run: nix develop -c make espidf-install
 
       - name: Build probe and shell firmware
         run: nix develop -c make shell-build

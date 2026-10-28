@@ -32,7 +32,7 @@ probe-flash: ## Flash the standalone SQL probe firmware (e.g. make probe-flash T
 	@export IDF_PATH="$${IDF_PATH:-$(CURDIR)/external/esp-idf}"; \
 	export IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}"; \
 	source "$$IDF_PATH/export.sh" >/dev/null 2>&1; \
-	(cd build/firmware && python -m esptool --chip esp32p4 --port $(TTY) --baud $(ESPTOOL_BAUD) --after no-reset write-flash @flash_args)
+	(cd build/firmware && python -m esptool --chip esp32p4 --port $(TTY) --baud $(ESPTOOL_BAUD) --after hard-reset write-flash @flash_args)
 
 shell-build: ## Build the shell firmware with interactive DuckDB
 	bash scripts/build-shell.sh
@@ -42,7 +42,7 @@ shell-flash: ## Flash the shell firmware to the ESP32-P4 (e.g. make flash TTY=/d
 	@export IDF_PATH="$${IDF_PATH:-$(CURDIR)/external/esp-idf}"; \
 	export IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}"; \
 	source "$$IDF_PATH/export.sh" >/dev/null 2>&1; \
-	(cd build/shell && python -m esptool --chip esp32p4 --port $(TTY) --baud $(ESPTOOL_BAUD) --after no-reset write-flash @flash_args)
+	(cd build/shell && python -m esptool --chip esp32p4 --port $(TTY) --baud $(ESPTOOL_BAUD) --after hard-reset write-flash @flash_args)
 
 flash: shell-flash ## Alias for shell-flash
 
@@ -61,8 +61,10 @@ check-probe: ## Run hardware serial check for standalone probe (e.g. make check-
 	source "$$IDF_PATH/export.sh" >/dev/null 2>&1; \
 	python scripts/check-board.py $(TTY)
 
-espidf-install: ## Install the pinned ESP-IDF tools and Python environment for ESP32-P4
-	IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}" bash external/esp-idf/install.sh esp32p4
+espidf-install: ## Install the pinned ESP-IDF tools, Espressif Clang, and Python environment for ESP32-P4
+	export IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}"; \
+	bash external/esp-idf/install.sh esp32p4; \
+	$(PYTHON) external/esp-idf/tools/idf_tools.py install esp-clang
 
 test: probe-test shell-test ## Run host portability, shell-path, and editor regression tests
 	$(PYTHON) -m unittest discover -s test -p 'test_*.py'

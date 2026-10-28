@@ -53,6 +53,8 @@ make shell-build
 make flash TTY=/dev/ttyACM0
 ```
 
+The board resets and starts the firmware after flashing.
+
 #### 5. Connect to the board
 
 ```shell
