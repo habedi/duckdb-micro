@@ -23,21 +23,21 @@ See the [ROADMAP.md](ROADMAP.md) for the list of implemented and planned feature
 
 ### Quickstart
 
-To follow the steps below, you need to have [Nix](https://nixos.org/download/) (with flakes enabled) installed on your machine.
+To follow the steps below, you need to have Git and [Nix](https://nixos.org/download/) (with flakes enabled) installed on your machine.
 The instructions are tested on Linux, and the firmware is tested on an ESP32-P4-WIFI6 board with silicon revision v1.3 with 32 MB PSRAM and 32 MB
 NOR flash.
 
-#### 1. Set up the development environment
-
-```shell
-nix develop
-```
-
-#### 2. Clone the repository
+#### 1. Clone the repository
 
 ```shell
 git clone --depth=1 --recursive https://github.com/habedi/duckdb-micro.git
 cd duckdb-micro
+```
+
+#### 2. Set up the development environment
+
+```shell
+nix develop
 ```
 
 #### 3. Build the (MicroShell) firmware
@@ -47,10 +47,15 @@ make espidf-install
 make shell-build
 ```
 
-#### 4. Flash and connect to the board
+#### 4. Flash the board
 
 ```shell
 make flash TTY=/dev/ttyACM0
+```
+
+#### 5. Connect to the board
+
+```shell
 make console TTY=/dev/ttyACM0
 ```
 

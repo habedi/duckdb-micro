@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - develop
     tags:
       - 'v*'
     paths-ignore:
@@ -16,6 +17,10 @@ on:
     paths-ignore:
       - '**.md'
       - 'docs/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -32,9 +37,60 @@ jobs:
         run: git submodule update --init --depth 1 external/duckdb external/esp-idf
 
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y make g++ python3
+        uses: cachix/install-nix-action@v31
 
       - name: Run tests
-        run: make test
+        run: nix develop -c make test
+
+  firmware:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      IDF_TOOLS_PATH: ${{ github.workspace }}/build/espressif
+      IDF_CCACHE_ENABLE: '1'
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+      CCACHE_DIR: ${{ github.workspace }}/build/ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_COMPILERCHECK: content
+      CCACHE_MAXSIZE: 2G
+      JOBS: '2'
+
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Read ESP-IDF revision
+        id: idf
+        run: echo "revision=$(git -C external/esp-idf rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        uses: cachix/install-nix-action@v31
+
+      - name: Cache ESP-IDF tools
+        uses: actions/cache@v4
+        with:
+          path: build/espressif
+          key: esp-idf-nix-${{ runner.arch }}-${{ steps.idf.outputs.revision }}-${{ hashFiles('flake.nix', 'flake.lock') }}-v1
+
+      - name: Cache compiled objects
+        uses: actions/cache@v4
+        with:
+          path: build/ccache
+          key: firmware-ubuntu-24.04-${{ runner.arch }}-${{ steps.idf.outputs.revision }}-${{ github.sha }}
+          restore-keys: |
+            firmware-ubuntu-24.04-${{ runner.arch }}-${{ steps.idf.outputs.revision }}-
+
+      - name: Install ESP-IDF tools and Espressif Clang
+        run: |
+          nix develop -c make espidf-install
+          nix develop -c python3 external/esp-idf/tools/idf_tools.py install esp-clang
+
+      - name: Build probe and shell firmware
+        run: nix develop -c make shell-build
+
+      - name: Show compiler cache statistics
+        if: always()
+        run: nix develop -c ccache --show-stats

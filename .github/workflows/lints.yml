@@ -36,9 +36,7 @@ jobs:
         run: git submodule update --init --depth 1 external/duckdb
 
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y make cppcheck
+        uses: cachix/install-nix-action@v31
 
       - name: Run linter checks
-        run: make lint
+        run: nix develop -c make lint

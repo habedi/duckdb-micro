@@ -9,6 +9,7 @@
       supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
+        "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
@@ -28,6 +29,7 @@
               git
               cmake
               ninja
+              ccache
               pkg-config
               (python315.withPackages (ps: [ ps.pyserial ]))
               uv
