@@ -51,7 +51,7 @@
     * [x] One-shot command execution (`duckdb -c "SQL"` and `duckdb [FILE] -c "SQL"`).
     * [x] Clean prompt separation with temporary suppression of shell tab completion.
     * [x] Dot-commands in the SQL console (`.quit`, `.exit`, `.help`, `.tables`).
-    * [ ] Result pagination for large query outputs in the serial terminal.
+    * [x] Result pagination for large query outputs in the serial terminal (25 rows per page; Space advances, and q stops output).
 
 ---
 

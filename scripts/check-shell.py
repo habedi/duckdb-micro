@@ -63,11 +63,26 @@ try:
         command("SELECT CAST(123456789012345678901234567890 AS HUGEINT) % 97;", b"\n52\t")
         command("SELECT * FROM missing_table;", b"SQL error:")
         command("SELECT 3 + 4;", b"\n7\t")
-        command("SELECT * FROM range(105);", b"(first 100 shown)")
+        pager = b"-- More -- [Space: next, q: quit]"
+        port.write(b"SELECT * FROM range(105);\r")
+        for last in (24, 49, 74, 99):
+            wait_for(b"\n" + str(last).encode() + b"\t")
+            wait_for(pager)
+            port.write(b" ")
+        wait_for(b"\n104\t")
+        wait_for(b"duckdb> ")
+        for key in (b"q", b"\x03"):
+            port.write(b"SELECT * FROM range(105);\r")
+            wait_for(pager)
+            port.write(key)
+            wait_for(b"(first 25 shown)")
+            wait_for(b"duckdb> ")
+            command("SELECT 3 + 4;", b"\n7\t")
         port.write(b".quit\r")
         wait_for(b"msh> ")
-        print("PASS: interactive SQL, errors, output limit, and return to shell")
+        print("PASS: interactive SQL, errors, pagination, and return to shell")
         command('duckdb -c "SELECT 100 + 23;"', b"\n123\t", b"msh> ")
+        command('duckdb -c "SELECT * FROM range(105);"', b"(first 100 shown)", b"msh> ")
         print("PASS: one-shot SQL and database reopen")
 
         fixture = "/sdcard/duckdb-probe-" + uuid.uuid4().hex + ".csv"
