@@ -2,6 +2,7 @@
 
 import importlib.util
 import io
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -103,6 +104,50 @@ class ScriptTests(unittest.TestCase):
                 for name in generated:
                     removed = target == "clean-all" or name.startswith("build/test/")
                     self.assertEqual((root / name).exists(), not removed)
+
+    def test_espidf_install_includes_clang_in_the_same_tools_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copyfile(ROOT / "Makefile", root / "Makefile")
+            sdk = root / "external/esp-idf"
+            (sdk / "tools").mkdir(parents=True)
+            (sdk / "install.sh").write_text(
+                'test "$1" = esp32p4\n'
+                'mkdir -p "$IDF_TOOLS_PATH"\n'
+                'touch "$IDF_TOOLS_PATH/base-tools"\n')
+            (sdk / "tools/idf_tools.py").write_text(
+                'import os, sys\nfrom pathlib import Path\n'
+                'assert sys.argv[1:] == ["install", "esp-clang"]\n'
+                'tools = Path(os.environ["IDF_TOOLS_PATH"])\n'
+                'assert (tools / "base-tools").is_file()\n'
+                '(tools / "clang").touch()\n')
+            tools = root / "custom tools"
+            env = dict(os.environ, IDF_TOOLS_PATH=str(tools))
+            subprocess.run(["make", "espidf-install", f"PYTHON={sys.executable}"],
+                           cwd=root, env=env, check=True, capture_output=True)
+            self.assertTrue((tools / "clang").is_file())
+
+    def test_flash_targets_reset_the_board(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copyfile(ROOT / "Makefile", root / "Makefile")
+            sdk = root / "sdk"
+            sdk.mkdir()
+            (sdk / "export.sh").write_text(
+                'python() { printf "%s\\n" "$@" > "$IDF_TOOLS_PATH/flash-call"; }\n')
+            for name in ("shell", "firmware"):
+                build = root / "build" / name
+                build.mkdir(parents=True)
+                (build / "flash_args").touch()
+            env = dict(os.environ, IDF_PATH=str(sdk), IDF_TOOLS_PATH=str(root))
+            for target in ("flash", "probe-flash"):
+                with self.subTest(target=target):
+                    subprocess.run(["make", target, "TTY=fake-port"], cwd=root,
+                                   env=env, check=True, capture_output=True)
+                    arguments = (root / "flash-call").read_text().splitlines()
+                    self.assertEqual(arguments[arguments.index("--after") + 1], "hard-reset")
+                    self.assertEqual(arguments[arguments.index("--port") + 1], "fake-port")
+                    self.assertEqual(arguments[-2:], ["write-flash", "@flash_args"])
 
 
 if __name__ == "__main__":
