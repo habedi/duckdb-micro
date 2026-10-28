@@ -48,7 +48,7 @@ nix develop
 
 ```shell
 make espidf-install
-make shell-build
+make shell-build # This may take a while
 ```
 
 #### 4. Flash the board
