@@ -108,3 +108,4 @@ shell-test: ## Run shell path, editor, completion, filesystem, and Wi-Fi helper 
 	$(PYTHON) -m unittest discover -s src/firmware/shell/test -p test_filesystem.py
 	$(PYTHON) -m unittest discover -s src/firmware/shell/test -p test_wifi.py
 	$(PYTHON) -m unittest discover -s src/firmware/shell/test -p test_flash_stack.py
+	$(PYTHON) -m unittest discover -s src/firmware/shell/test -p test_duckdb_console.py

@@ -30,25 +30,44 @@ struct Request {
     int status;
 };
 
-bool query(duckdb::Connection& connection, const char* sql) {
+bool next_page() {
+    printf("-- More -- [Space: next, q: quit]");
+    fflush(stdout);
+    int key;
+    do {
+        key = getchar();
+    } while (key != ' ' && key != 'q' && key != 'Q' && key != '\x03' && key != EOF);
+    if (key == EOF) {
+        clearerr(stdin);
+    }
+    printf("\r\x1b[K");
+    return key == ' ';
+}
+
+bool query(duckdb::Connection& connection, const char* sql, bool interactive) {
     const auto start = esp_timer_get_time();
     auto result = connection.Query(sql);
     if (result->HasError()) {
         printf("SQL error: %s\n", result->GetError().c_str());
         return false;
     }
+    const auto elapsed = esp_timer_get_time() - start;
     for (const auto& name : result->GetNames()) {
         printf("%s\t", name.c_str());
     }
     printf("\n");
     duckdb::idx_t shown = 0;
-    // shortcut: show 100 rows; add paging if larger interactive results are needed.
-    while (shown < 100) {
+    duckdb::idx_t limit = interactive ? result->RowCount() : 100;
+    while (shown < limit) {
         auto chunk = result->Fetch();
         if (!chunk || chunk->size() == 0) {
             break;
         }
-        for (duckdb::idx_t row = 0; row < chunk->size() && shown < 100; ++row, ++shown) {
+        for (duckdb::idx_t row = 0; row < chunk->size() && shown < limit; ++row, ++shown) {
+            if (interactive && shown != 0 && shown % 25 == 0 && !next_page()) {
+                limit = shown;
+                break;
+            }
             for (duckdb::idx_t col = 0; col < chunk->ColumnCount(); ++col) {
                 const auto value = chunk->GetValue(col, row);
                 printf("%s\t", value.IsNull() ? "NULL" : value.ToString().c_str());
@@ -56,9 +75,12 @@ bool query(duckdb::Connection& connection, const char* sql) {
             printf("\n");
         }
     }
-    printf("%llu row(s), %lld ms%s\n", (unsigned long long)result->RowCount(),
-           (long long)((esp_timer_get_time() - start) / 1000),
-           result->RowCount() > shown ? " (first 100 shown)" : "");
+    printf("%llu row(s), %lld ms", (unsigned long long)result->RowCount(),
+           (long long)(elapsed / 1000));
+    if (result->RowCount() > shown) {
+        printf(" (first %llu shown)", (unsigned long long)shown);
+    }
+    printf("\n");
     return true;
 }
 
@@ -87,7 +109,7 @@ void sql_task(void* argument) {
                (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
                (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
         if (request.sql) {
-            request.status = query(connection, request.sql) ? 0 : 1;
+            request.status = query(connection, request.sql, false) ? 0 : 1;
         } else {
             request.status = 0;
             linenoiseSetCompletionCallback(nullptr);
@@ -110,6 +132,9 @@ void sql_task(void* argument) {
                     printf("  .quit, .exit        Exit back to msh\n");
                     printf("  .tables             List tables in current database\n");
                     printf("  .help               Show this help message\n\n");
+                    printf(
+                        "Results pause every 25 rows. Space advances; q or Ctrl+C stops "
+                        "output.\n\n");
                     printf("SQL Examples:\n");
                     printf("  SELECT 42 AS answer;\n");
                     printf("  CREATE TABLE t(id INT, name VARCHAR);\n");
@@ -124,14 +149,14 @@ void sql_task(void* argument) {
                 }
                 if (strcmp(line, ".tables") == 0) {
                     linenoiseHistoryAdd(line);
-                    query(connection, "SHOW TABLES;");
+                    query(connection, "SHOW TABLES;", true);
                     linenoiseFree(line);
                     continue;
                 }
                 if (*line) {
                     linenoiseHistoryAdd(line);
                     try {
-                        query(connection, line);
+                        query(connection, line, true);
                     } catch (const std::exception& error) {
                         printf("SQL error: %s\n", error.what());
                     }
