@@ -77,12 +77,6 @@ Press Enter twice after opening the console to get to the MicroShell (`msh>`) pr
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to make a contribution.
 
-### Build Cleanup
-
-`make clean` removes host test binaries and keeps the DuckDB and firmware builds for faster incremental builds.
-`make clean-all` also removes the DuckDB and firmware build directories, so the next firmware build can take a long time.
-Both commands preserve installed toolchains, hardware logs, flash backups, and the applied DuckDB patch in `external/duckdb`.
-
 ### License
 
 This project is licensed under the Apache License, Version 2.0 (see [LICENSE](LICENSE)).
