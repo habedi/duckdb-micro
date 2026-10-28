@@ -1,0 +1,1059 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3e69d9b32e4..1d0384ecd94 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -75,7 +75,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
+ set(CMAKE_CXX_EXTENSIONS OFF)
+
+ set(CMAKE_VERBOSE_MAKEFILE OFF)
+-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
++if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
++  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
++endif()
+ set(CMAKE_MACOSX_RPATH 1)
+ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+diff --git a/extension/core_functions/function_list.cpp b/extension/core_functions/function_list.cpp
+index 06bf269b49a..9cf71386700 100644
+--- a/extension/core_functions/function_list.cpp
++++ b/extension/core_functions/function_list.cpp
+@@ -53,9 +53,13 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_SCALAR_FUNCTION_SET(BitwiseAndFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ListHasAnyFunAlias),
+ 	DUCKDB_SCALAR_FUNCTION(PowOperatorFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ListDistanceFunAlias),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(LeftShiftFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ListCosineDistanceFunAlias),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ListHasAllFunAlias2),
+ 	DUCKDB_SCALAR_FUNCTION_SET(RightShiftFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(AbsOperatorFun),
+@@ -64,14 +68,18 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_SCALAR_FUNCTION(StartsWithOperatorFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(AbsFun),
+ 	DUCKDB_SCALAR_FUNCTION(AcosFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(AcoshFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(AgeFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(AggregateFun),
+ 	DUCKDB_SCALAR_FUNCTION(AliasFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ApplyFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(ApproxCountDistinctFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(ApproxQuantileFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(ApproxTopKFun),
++#endif
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(ArgMaxFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(ArgMaxNullFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(ArgMaxNullsLastFun),
+@@ -84,45 +92,69 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ArrayAggrFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ArrayAggregateFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ArrayApplyFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET(ArrayCosineDistanceFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ArrayCosineSimilarityFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ArrayCrossProductFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ArrayDistanceFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ArrayDistinctFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ArrayDotProductFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ArrayFilterFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ArrayGradeUpFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ArrayHasAllFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ArrayHasAnyFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET(ArrayInnerProductFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ArrayNegativeDotProductFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ArrayNegativeInnerProductFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ArrayReduceFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ArrayReverseSortFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ArraySliceFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ArraySortFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ArrayTransformFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ArrayUniqueFun),
+ 	DUCKDB_SCALAR_FUNCTION(ArrayValueFun),
+ 	DUCKDB_SCALAR_FUNCTION(ASCIIFun),
+ 	DUCKDB_SCALAR_FUNCTION(AsinFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(AsinhFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(AtanFun),
+ 	DUCKDB_SCALAR_FUNCTION(Atan2Fun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(AtanhFun),
++#endif
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(AvgFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET(BarFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(Base64Fun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(BinFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(BinomFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(BitAndFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(BitCountFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(BitOrFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(BitPositionFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(BitXorFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(BitStringFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(BitstringAggFun),
+ 	DUCKDB_SCALAR_FUNCTION(BitStringSortKeyFun),
++#endif
+ 	DUCKDB_AGGREGATE_FUNCTION(BoolAndFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(BoolOrFun),
+ 	DUCKDB_SCALAR_FUNCTION(CanCastImplicitlyFun),
+@@ -133,20 +165,28 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(CeilingFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(CenturyFun),
+ 	DUCKDB_SCALAR_FUNCTION(ChrFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION(CorrFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(CosFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(CoshFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(CotFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(CountIfFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_ALIAS(CountifFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION(CovarPopFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(CovarSampFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(CurrentDatabaseFun),
+ 	DUCKDB_SCALAR_FUNCTION(CurrentQueryFun),
+ 	DUCKDB_SCALAR_FUNCTION(CurrentSchemaFun),
+ 	DUCKDB_SCALAR_FUNCTION(CurrentSchemasFun),
+ 	DUCKDB_SCALAR_FUNCTION(CurrentSettingFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(DamerauLevenshteinFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(DateDiffFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(DatePartFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(DateSubFun),
+@@ -163,10 +203,14 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_SCALAR_FUNCTION_SET(DecadeFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(DecodeFun),
+ 	DUCKDB_SCALAR_FUNCTION(DegreesFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(Editdist3Fun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ElementAtFun),
+ 	DUCKDB_SCALAR_FUNCTION(EncodeFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(EntropyFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(EnumCodeFun),
+ 	DUCKDB_SCALAR_FUNCTION(EnumFirstFun),
+ 	DUCKDB_SCALAR_FUNCTION(EnumLastFun),
+@@ -176,7 +220,9 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_SCALAR_FUNCTION_SET(EpochMsFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(EpochNsFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(EpochUsFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET(EquiWidthBinsFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(EraFun),
+ 	DUCKDB_SCALAR_FUNCTION(EvenFun),
+ 	DUCKDB_SCALAR_FUNCTION(ExpFun),
+@@ -193,66 +239,94 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(FromBinaryFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(FromHexFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_ALIAS(FsumFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(GammaFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(GcdFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(GenRandomUuidFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(GenerateSeriesFun),
+ 	DUCKDB_SCALAR_FUNCTION(GetBitFun),
+ 	DUCKDB_SCALAR_FUNCTION(GetCurrentTimestampFun),
+ 	DUCKDB_SCALAR_FUNCTION(GetTypeFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(GradeUpFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(GreatestFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(GreatestCommonDivisorFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_SET_ALIAS(GroupConcatFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(HammingFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(HashFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(HexFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(HistogramFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(HistogramExactFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(HoursFun),
+ 	DUCKDB_SCALAR_FUNCTION(InSearchPathFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(IndexKeyFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(InstrFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(IsHistogramOtherBinFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(IsFiniteFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(IsInfiniteFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(IsNanFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ISODayOfWeekFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ISOYearFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(JaccardFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(JaroSimilarityFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(JaroWinklerSimilarityFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(JulianDayFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(KahanSumFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION(KurtosisFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(KurtosisPopFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(LastDayFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(LcmFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(LeastFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(LeastCommonMultipleFun),
+ 	DUCKDB_SCALAR_FUNCTION(LeftFun),
+ 	DUCKDB_SCALAR_FUNCTION(LeftGraphemeFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(LevenshteinFun),
+ 	DUCKDB_SCALAR_FUNCTION(LogGammaFun),
++#endif
+ 	DUCKDB_AGGREGATE_FUNCTION(ListFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ListAggrFun),
+ 	DUCKDB_SCALAR_FUNCTION(ListAggregateFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(ListApplyFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET(ListCosineDistanceFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ListCosineSimilarityFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ListDistanceFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(ListDistinctFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ListDotProductFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(ListFilterFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET(ListGradeUpFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(ListHasAllFun),
+ 	DUCKDB_SCALAR_FUNCTION(ListHasAnyFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET(ListInnerProductFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ListNegativeDotProductFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ListNegativeInnerProductFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ListPackFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ListReduceFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET(ListReverseSortFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(ListSliceFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ListSortFun),
+ 	DUCKDB_SCALAR_FUNCTION(ListTransformFun),
+@@ -265,8 +339,10 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_SCALAR_FUNCTION(Log2Fun),
+ 	DUCKDB_SCALAR_FUNCTION(LpadFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(LtrimFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(LttbFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(MadFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(MakeDateFun),
+ 	DUCKDB_SCALAR_FUNCTION(MakeTimeFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(MakeTimestampFun),
+@@ -289,12 +365,16 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_SCALAR_FUNCTION_SET(MillisecondsFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_SET_ALIAS(MinByFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(MinutesFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(MismatchesFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(ModeFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(MonthFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(MonthNameFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(NanosecondsFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET(NextAfterFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(NormalizedIntervalFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(NowFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(OrdFun),
+@@ -309,14 +389,17 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(PowerFun),
+ 	DUCKDB_SCALAR_FUNCTION(PrintfFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(ProductFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION_SET_ALIAS(QuantileFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(QuantileContFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(QuantileDiscFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(QuarterFun),
+ 	DUCKDB_SCALAR_FUNCTION(RadiansFun),
+ 	DUCKDB_SCALAR_FUNCTION(RandomFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(ListRangeFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET_ALIAS(ReduceFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION(RegrAvgxFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(RegrAvgyFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(RegrCountFun),
+@@ -326,10 +409,13 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_AGGREGATE_FUNCTION(RegrSXXFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(RegrSXYFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(RegrSYYFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION_SET(RepeatFun),
+ 	DUCKDB_SCALAR_FUNCTION(ReplaceFun),
+ 	DUCKDB_SCALAR_FUNCTION(ReplaceTypeFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION_SET(ReservoirQuantileFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(ReverseFun),
+ 	DUCKDB_SCALAR_FUNCTION(RightFun),
+ 	DUCKDB_SCALAR_FUNCTION(RightGraphemeFun),
+@@ -339,15 +425,21 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_SCALAR_FUNCTION(RpadFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(RtrimFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(SecondsFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION(StandardErrorOfTheMeanFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(SetBitFun),
+ 	DUCKDB_SCALAR_FUNCTION(SetseedFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(SignFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(SignBitFun),
+ 	DUCKDB_SCALAR_FUNCTION(SinFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(SinhFun),
++#endif
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION(SkewnessFun),
+ 	DUCKDB_SCALAR_FUNCTION(SleepMsFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(SqrtFun),
+ 	DUCKDB_SCALAR_FUNCTION_ALIAS(StartsWithFun),
+ 	DUCKDB_SCALAR_FUNCTION(StatsFun),
+@@ -365,8 +457,12 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_AGGREGATE_FUNCTION_ALIAS(SumkahanFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(SwitchFun),
+ 	DUCKDB_SCALAR_FUNCTION(TanFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION(TanhFun),
++#endif
++#ifndef ESP_PLATFORM
+ 	DUCKDB_SCALAR_FUNCTION_SET(TimeBucketFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(TimeTZSortKeyFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(TimezoneFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(TimezoneHourFun),
+@@ -412,7 +508,9 @@ static const StaticFunctionDefinition core_functions[] = {
+ 	DUCKDB_AGGREGATE_FUNCTION(VarPopFun),
+ 	DUCKDB_AGGREGATE_FUNCTION(VarSampFun),
+ 	DUCKDB_AGGREGATE_FUNCTION_ALIAS(VarianceFun),
++#ifndef ESP_PLATFORM
+ 	DUCKDB_AGGREGATE_FUNCTION(VariantGroupObjectFun),
++#endif
+ 	DUCKDB_SCALAR_FUNCTION(VectorTypeFun),
+ 	DUCKDB_SCALAR_FUNCTION(VersionFun),
+ 	DUCKDB_SCALAR_FUNCTION_SET(WeekFun),
+diff --git a/extension/json/include/json_reader_options.hpp b/extension/json/include/json_reader_options.hpp
+index 25563ac9858..0973b121a44 100644
+--- a/extension/json/include/json_reader_options.hpp
++++ b/extension/json/include/json_reader_options.hpp
+@@ -101,8 +101,12 @@ struct JSONReaderOptions {
+ 	FileCompressionType compression = FileCompressionType::AUTO_DETECT;
+ 	//! Whether or not we should ignore malformed JSON (default to NULL)
+ 	bool ignore_errors = false;
+-	//! Maximum JSON object size (defaults to 16MB minimum)
++	//! Maximum JSON object size (defaults to 16MB minimum, 64KB on ESP_PLATFORM)
++#ifdef ESP_PLATFORM
++	idx_t maximum_object_size = 65536;
++#else
+ 	idx_t maximum_object_size = 16777216;
++#endif
+ 	//! Whether we auto-detect a schema
+ 	bool auto_detect = false;
+ 	//! Whether "format" was explicitly specified
+diff --git a/extension/json/json_scan.cpp b/extension/json/json_scan.cpp
+index b34970e7718..9623d10897b 100644
+--- a/extension/json/json_scan.cpp
++++ b/extension/json/json_scan.cpp
+@@ -172,7 +172,7 @@ bool JSONScan::ParseOption(ClientContext &context, const Identifier &key, const
+ 		return true;
+ 	}
+ 	if (key == "maximum_object_size") {
+-		options.maximum_object_size = MaxValue<idx_t>(UIntegerValue::Get(value), options.maximum_object_size);
++		options.maximum_object_size = UIntegerValue::Get(value);
+ 		return true;
+ 	}
+ 	if (key == "format") {
+diff --git a/src/common/allocator/allocator_standard.cpp b/src/common/allocator/allocator_standard.cpp
+index d74816ed1ab..572e915ec6c 100644
+--- a/src/common/allocator/allocator_standard.cpp
++++ b/src/common/allocator/allocator_standard.cpp
+@@ -5,6 +5,10 @@
+ #include "duckdb/common/assert.hpp"
+ #include "duckdb/common/exception.hpp"
+ #include "duckdb/common/helper.hpp"
++#ifdef ESP_PLATFORM
++#include <cstddef>
++#include <cstdlib>
++#endif
+
+ #ifdef DUCKDB_DEBUG_ALLOCATION
+ #include "duckdb/common/mutex.hpp"
+@@ -17,7 +21,13 @@
+ namespace duckdb {
+
+ data_ptr_t Allocator::DefaultAllocate(PrivateAllocatorData *private_data, idx_t size) {
++#ifdef ESP_PLATFORM
++	// ESP-IDF's ordinary heap allocations can be only four-byte aligned; aligned_alloc
++	// routes through heap_caps_aligned_alloc_default so it honors heap_caps_malloc_extmem_enable.
++	auto default_allocate_result = aligned_alloc(alignof(std::max_align_t), size);
++#else
+ 	auto default_allocate_result = malloc(size);
++#endif
+ 	if (!default_allocate_result) {
+ 		throw std::bad_alloc();
+ 	}
+@@ -30,7 +40,20 @@ void Allocator::DefaultFree(PrivateAllocatorData *private_data, data_ptr_t point
+
+ data_ptr_t Allocator::DefaultReallocate(PrivateAllocatorData *private_data, data_ptr_t pointer, idx_t old_size,
+                                         idx_t size) {
++#ifdef ESP_PLATFORM
++	if (size == 0) {
++		free(pointer);
++		return nullptr;
++	}
++	auto result = DefaultAllocate(private_data, size);
++	if (pointer) {
++		memcpy(result, pointer, MinValue(old_size, size));
++		free(pointer);
++	}
++	return result;
++#else
+ 	return data_ptr_cast(realloc(pointer, size));
++#endif
+ }
+
+ optional_idx Allocator::DecayDelay() {
+diff --git a/src/common/encryption_key_manager.cpp b/src/common/encryption_key_manager.cpp
+index 32886430cf0..639c7864290 100644
+--- a/src/common/encryption_key_manager.cpp
++++ b/src/common/encryption_key_manager.cpp
+@@ -8,7 +8,7 @@
+
+ #if defined(_WIN32)
+ #include "duckdb/common/windows.hpp"
+-#else
++#elif !defined(ESP_PLATFORM)
+ #include <sys/mman.h>
+ #undef MAP_TYPE
+ #endif
+@@ -36,6 +36,10 @@ void EncryptionKey::LockEncryptionKey(data_ptr_t key, idx_t key_len) {
+ 	VirtualLock(key, key_len);
+ #elif defined(__MVS__)
+ 	__mlockall(_BPX_NONSWAP);
++#elif defined(ESP_PLATFORM)
++	// ESP-IDF has no paging, so this allocation cannot be swapped out.
++	(void)key;
++	(void)key_len;
+ #else
+ 	mlock(key, key_len);
+ #endif
+@@ -47,6 +51,9 @@ void EncryptionKey::UnlockEncryptionKey(data_ptr_t key, idx_t key_len) {
+ 	VirtualUnlock(key, key_len);
+ #elif defined(__MVS__)
+ 	__mlockall(_BPX_SWAP);
++#elif defined(ESP_PLATFORM)
++	(void)key;
++	(void)key_len;
+ #else
+ 	munlock(key, key_len);
+ #endif
+diff --git a/src/common/file_system.cpp b/src/common/file_system.cpp
+index 62a7b2b8f5d..fdfb0bcab6b 100644
+--- a/src/common/file_system.cpp
++++ b/src/common/file_system.cpp
+@@ -20,6 +20,9 @@
+
+ #include <cstdint>
+ #include <cstdio>
++#ifdef ESP_PLATFORM
++#include "esp_heap_caps.h"
++#endif
+
+ #ifndef _WIN32
+ #include <dirent.h>
+@@ -136,6 +139,9 @@ void FileSystem::SetWorkingDirectory(const string &path) {
+ }
+
+ optional_idx FileSystem::GetAvailableMemory() {
++#ifdef ESP_PLATFORM
++	return heap_caps_get_free_size(MALLOC_CAP_8BIT);
++#else
+ 	errno = 0;
+
+ #ifdef __MVS__
+@@ -149,6 +155,7 @@ optional_idx FileSystem::GetAvailableMemory() {
+ 		return optional_idx();
+ 	}
+ 	return max_memory;
++#endif
+ }
+
+ optional_idx FileSystem::GetAvailableDiskSpace(const string &path) {
+diff --git a/src/common/local_file_system.cpp b/src/common/local_file_system.cpp
+index 664659e76aa..add337f4678 100644
+--- a/src/common/local_file_system.cpp
++++ b/src/common/local_file_system.cpp
+@@ -30,7 +30,9 @@
+ #include <dirent.h>
+ #include <fcntl.h>
+ #include <string.h>
++#ifndef ESP_PLATFORM
+ #include <sys/mman.h>
++#endif
+ #include <sys/types.h>
+ #include <unistd.h>
+ #else
+@@ -287,6 +289,9 @@ static FileMetadata StatsInternal(int fd, const string &path) {
+ // Apply a fcntl advisory lock per flags.Lock(); throws (and closes fd) on failure. Shared
+ // by OpenFile and MemoryMapFile.
+ static void TryAcquireFileLock(FileSystem &fs, int fd, const string &path, FileOpenFlags flags) {
++#ifdef ESP_PLATFORM
++	return;
++#else
+ 	if (flags.Lock() == FileLockType::NO_LOCK) {
+ 		return;
+ 	}
+@@ -345,9 +350,13 @@ static void TryAcquireFileLock(FileSystem &fs, int fd, const string &path, FileO
+ 	extended_error += ". See also https://duckdb.org/docs/current/connect/concurrency";
+ 	throw IOException({{"errno", std::to_string(retained_errno)}}, "Could not set lock on file \"%s\": %s", path,
+ 	                  extended_error);
++#endif
+ }
+
+ bool LocalFileSystem::IsPrivateFile(const string &path_p, FileOpener *opener) {
++#ifdef ESP_PLATFORM
++	throw NotImplementedException("Private file permissions are unavailable on ESP32");
++#else
+ 	auto path = FileSystem::ExpandPath(path_p, opener);
+
+ 	struct stat st;
+@@ -364,6 +373,7 @@ bool LocalFileSystem::IsPrivateFile(const string &path_p, FileOpener *opener) {
+ 	}
+
+ 	return true;
++#endif
+ }
+
+ unique_ptr<FileHandle> LocalFileSystem::OpenFile(const string &path_p, FileOpenFlags flags,
+@@ -422,6 +432,35 @@ unique_ptr<FileHandle> LocalFileSystem::OpenFile(const string &path_p, FileOpenF
+ 		open_flags |= O_EXCL;
+ 	}
+
++#ifdef ESP_PLATFORM
++	// ESP-IDF 6.1 VFS expects picolibc fcntl flag values:
++	// O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2
++	// O_CREAT = 0x0040, O_TRUNC = 0x0200, O_APPEND = 0x0400, O_EXCL = 0x0800
++	int vfs_open_flags = 0;
++	if (open_read && open_write) {
++		vfs_open_flags = 2; // O_RDWR
++	} else if (open_read) {
++		vfs_open_flags = 0; // O_RDONLY
++	} else if (open_write) {
++		vfs_open_flags = 1; // O_WRONLY
++	}
++	if (open_write) {
++		if (flags.CreateFileIfNotExists() || flags.OverwriteExistingFile()) {
++			vfs_open_flags |= 0x0040; // O_CREAT
++		}
++		if (flags.OverwriteExistingFile() && !flags.OpenForAppending()) {
++			vfs_open_flags |= 0x0200; // O_TRUNC
++		}
++		if (flags.OpenForAppending()) {
++			vfs_open_flags |= 0x0400; // O_APPEND
++		}
++	}
++	if (flags.ExclusiveCreate() || flags.CreatePrivateFile()) {
++		vfs_open_flags |= 0x0800; // O_EXCL
++	}
++	open_flags = vfs_open_flags;
++#endif
++
+ 	// Open the file
+ 	ApplyLocalFileSystemDelay(opener);
+ 	int fd = open(path.c_str(), open_flags, filesec);
+@@ -830,7 +869,8 @@ void LocalFileSystem::FileSync(FileHandle &handle) {
+ 	}
+ #endif // F_FULLFSYNC
+
+-#ifdef DUCKDB_HAVE_FDATASYNC
++// ESP-IDF declares fdatasync without providing an implementation.
++#if defined(DUCKDB_HAVE_FDATASYNC) && !defined(ESP_PLATFORM)
+ 	bool sync_success = ::fdatasync(fd) == 0;
+ #else
+ 	bool sync_success = ::fsync(fd) == 0;
+@@ -854,10 +894,21 @@ void LocalFileSystem::MoveFile(const string &source, const string &target, optio
+ 	auto normalized_source = ExpandPath(source, opener);
+ 	auto normalized_target = ExpandPath(target, opener);
+ 	//! FIXME: rename does not guarantee atomicity or overwriting target file if it exists
++#ifdef ESP_PLATFORM
++	if (rename(normalized_source.c_str(), normalized_target.c_str()) != 0) {
++		if (errno != EEXIST || strcasecmp(normalized_source.c_str(), normalized_target.c_str()) == 0 ||
++		    unlink(normalized_target.c_str()) != 0 ||
++		    rename(normalized_source.c_str(), normalized_target.c_str()) != 0) {
++			throw IOException({{"errno", to_string(errno)}}, "Could not rename file \"%s\" to \"%s\": %s", source,
++			                  target, strerror(errno));
++		}
++	}
++#else
+ 	if (rename(normalized_source.c_str(), normalized_target.c_str()) != 0) {
+ 		throw IOException({{"errno", to_string(errno)}}, "Could not rename file \"%s\" to \"%s\": %s", source, target,
+ 		                  strerror(errno));
+ 	}
++#endif
+ }
+
+ std::string LocalFileSystem::GetLastErrorAsString() {
+@@ -889,6 +940,12 @@ string LocalFileSystem::MakePathAbsolute(const string &path_p, optional_ptr<File
+ //===----------------------------------------------------------------------===//
+ // Memory-mapped files (Unix)
+ //===----------------------------------------------------------------------===//
++#ifdef ESP_PLATFORM
++unique_ptr<MemoryMappedFile> LocalFileSystem::MemoryMapFile(const OpenFileInfo &, FileOpenFlags,
++                                                          const MMapOptions &, optional_ptr<FileOpener>) {
++	throw NotImplementedException("Memory-mapped files are unavailable on ESP32");
++}
++#else
+ class UnixMemoryMappedFile : public MemoryMappedFile {
+ public:
+ 	UnixMemoryMappedFile(string path_p, FileOpenFlags flags_p, int fd_p, data_ptr_t data_p, idx_t size_p);
+@@ -1021,6 +1078,7 @@ unique_ptr<MemoryMappedFile> LocalFileSystem::MemoryMapFile(const OpenFileInfo &
+
+ 	return make_uniq<UnixMemoryMappedFile>(path, flags, fd, data, mapping_size);
+ }
++#endif
+
+ #else
+
+@@ -2101,7 +2159,10 @@ static bool IsCrawl(const string &glob) {
+ }
+
+ static bool IsSymbolicLink(const string &path) {
+-#ifndef _WIN32
++#if defined(ESP_PLATFORM)
++	// FATFS and LittleFS do not support symbolic links.
++	return false;
++#elif !defined(_WIN32)
+ 	struct stat status;
+ 	return (lstat(path.c_str(), &status) != -1 && S_ISLNK(status.st_mode));
+ #else
+diff --git a/src/common/printer.cpp b/src/common/printer.cpp
+index 115c1cae0fa..f45e0620a52 100644
+--- a/src/common/printer.cpp
++++ b/src/common/printer.cpp
+@@ -72,6 +72,8 @@ idx_t Printer::TerminalWidth() {
+ 	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+ 	rows = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+ 	return rows;
++#elif defined(ESP_PLATFORM)
++	return 120;
+ #else
+ 	struct winsize w = {};
+ 	ioctl(0, TIOCGWINSZ, &w);
+diff --git a/src/common/serializer/async_file_writer.cpp b/src/common/serializer/async_file_writer.cpp
+index a56bbb20fc9..099947e5007 100644
+--- a/src/common/serializer/async_file_writer.cpp
++++ b/src/common/serializer/async_file_writer.cpp
+@@ -404,6 +404,7 @@ void AsyncFileWriter::Close() {
+ 			SealCopiedBuffer(ScheduleMode::DEFER);
+ 		}
+ 		write_queue->Close();
++#ifndef ESP_PLATFORM
+ 		if (handle->file_system.IsLocalFileSystem() && handle->GetFileCompressionType().IsUncompressed()) {
+ 			auto metadata = handle->Stats();
+ 			if (metadata.file_type == FileType::FILE_TYPE_REGULAR &&
+@@ -412,6 +413,7 @@ void AsyncFileWriter::Close() {
+ 				                  total_written, metadata.file_size);
+ 			}
+ 		}
++#endif
+ 	} catch (...) {
+ 		auto error = std::current_exception();
+ 		if (!first_error) {
+diff --git a/src/common/types/date.cpp b/src/common/types/date.cpp
+index 61e3965e4fc..4cc6292e5d4 100644
+--- a/src/common/types/date.cpp
++++ b/src/common/types/date.cpp
+@@ -552,10 +552,10 @@ static int32_t GetISOYearWeek(const date_t date, int32_t &year) {
+ 	int32_t month, day;
+ 	Date::Convert(date, year, month, day);
+ 	auto week1_monday = GetISOWeekOne(year);
+-	auto week = PythonDivMod((date.days - week1_monday.days), 7, day);
++	auto week = PythonDivMod<int32_t>((date.days - week1_monday.days), 7, day);
+ 	if (week < 0) {
+ 		week1_monday = GetISOWeekOne(--year);
+-		week = PythonDivMod((date.days - week1_monday.days), 7, day);
++		week = PythonDivMod<int32_t>((date.days - week1_monday.days), 7, day);
+ 	} else if (week >= 52 && date >= GetISOWeekOne(year + 1)) {
+ 		++year;
+ 		week = 0;
+diff --git a/src/include/duckdb/common/hugeint.hpp b/src/include/duckdb/common/hugeint.hpp
+index 8441065069b..a24e585f408 100644
+--- a/src/include/duckdb/common/hugeint.hpp
++++ b/src/include/duckdb/common/hugeint.hpp
+@@ -79,6 +79,10 @@ public:
+ 	DUCKDB_API explicit operator int8_t() const;
+ 	DUCKDB_API explicit operator int16_t() const;
+ 	DUCKDB_API explicit operator int32_t() const;
++#if defined(ESP_PLATFORM) && !defined(__clang__)
++	explicit operator int() const { return static_cast<int>(static_cast<int32_t>(*this)); }
++	explicit operator unsigned int() const { return static_cast<unsigned int>(static_cast<uint32_t>(*this)); }
++#endif
+ 	DUCKDB_API explicit operator int64_t() const;
+ 	DUCKDB_API explicit operator uhugeint_t() const;
+ };
+diff --git a/src/include/duckdb/common/platform.hpp b/src/include/duckdb/common/platform.hpp
+index ac4974d7f5a..90be6b61db6 100644
+--- a/src/include/duckdb/common/platform.hpp
++++ b/src/include/duckdb/common/platform.hpp
+@@ -15,7 +15,7 @@
+ #define DUCKDB_QUOTE_DEFINE(x)      DUCKDB_QUOTE_DEFINE_IMPL(x)
+ #endif
+
+-#if defined(_WIN32) || defined(__APPLE__) || defined(__FreeBSD__)
++#if defined(_WIN32) || defined(__APPLE__) || defined(__FreeBSD__) || defined(DUCKDB_CUSTOM_PLATFORM)
+ #else
+ #if !defined(_GNU_SOURCE)
+ #define _GNU_SOURCE
+diff --git a/src/include/duckdb/common/radix.hpp b/src/include/duckdb/common/radix.hpp
+index bdf8b8f62b6..1b3fe58cc6d 100644
+--- a/src/include/duckdb/common/radix.hpp
++++ b/src/include/duckdb/common/radix.hpp
+@@ -110,11 +110,11 @@ public:
+ 		}
+ 		// nan
+ 		if (Value::IsNan(x)) {
+-			return ULLONG_MAX;
++			return std::numeric_limits<uint64_t>::max();
+ 		}
+ 		//! infinity
+ 		if (x > DBL_MAX) {
+-			return ULLONG_MAX - 1;
++			return std::numeric_limits<uint64_t>::max() - 1;
+ 		}
+ 		//! -infinity
+ 		if (x < -DBL_MAX) {
+@@ -130,10 +130,10 @@ public:
+ 	}
+ 	static inline double DecodeDouble(uint64_t input) {
+ 		// nan
+-		if (input == ULLONG_MAX) {
++		if (input == std::numeric_limits<uint64_t>::max()) {
+ 			return std::numeric_limits<double>::quiet_NaN();
+ 		}
+-		if (input == ULLONG_MAX - 1) {
++		if (input == std::numeric_limits<uint64_t>::max() - 1) {
+ 			return std::numeric_limits<double>::infinity();
+ 		}
+ 		if (input == 0) {
+diff --git a/src/include/duckdb/common/serializer/deserializer.hpp b/src/include/duckdb/common/serializer/deserializer.hpp
+index 47d39ca5f4c..c819c56ddb2 100644
+--- a/src/include/duckdb/common/serializer/deserializer.hpp
++++ b/src/include/duckdb/common/serializer/deserializer.hpp
+@@ -482,6 +482,18 @@ private:
+ 		return ReadUnsignedInt32();
+ 	}
+
++#if defined(ESP_PLATFORM) && !defined(__clang__)
++	template <typename T = void>
++	inline typename std::enable_if<std::is_same<T, int>::value, T>::type Read() {
++		return static_cast<int>(ReadSignedInt32());
++	}
++
++	template <typename T = void>
++	inline typename std::enable_if<std::is_same<T, unsigned int>::value, T>::type Read() {
++		return static_cast<unsigned int>(ReadUnsignedInt32());
++	}
++#endif
++
+ 	// Deserialize a int64_t
+ 	template <typename T = void>
+ 	inline typename std::enable_if<std::is_same<T, int64_t>::value, T>::type Read() {
+diff --git a/src/include/duckdb/common/serializer/serializer.hpp b/src/include/duckdb/common/serializer/serializer.hpp
+index ab043aa4fb5..3200e06dd75 100644
+--- a/src/include/duckdb/common/serializer/serializer.hpp
++++ b/src/include/duckdb/common/serializer/serializer.hpp
+@@ -419,6 +419,14 @@ protected:
+ 	void WriteValue(PerColumnMetadataBlock value) {
+ 		WriteValue(value.GetPacked());
+ 	}
++#if defined(ESP_PLATFORM) && !defined(__clang__)
++	void WriteValue(int value) {
++		WriteValue(static_cast<int32_t>(value));
++	}
++	void WriteValue(unsigned int value) {
++		WriteValue(static_cast<uint32_t>(value));
++	}
++#endif
+ };
+
+ // We need to special case vector<bool> because elements of vector<bool> cannot be referenced
+diff --git a/src/include/duckdb/common/thread.hpp b/src/include/duckdb/common/thread.hpp
+index ccf773c5c73..b02811fe8d3 100644
+--- a/src/include/duckdb/common/thread.hpp
++++ b/src/include/duckdb/common/thread.hpp
+@@ -8,11 +8,12 @@
+
+ #pragma once
+
+-#ifndef DUCKDB_NO_THREADS
+-#include <thread>
+ #include "duckdb/common/typedefs.hpp"
+ #include "duckdb/common/string.hpp"
+
++#ifndef DUCKDB_NO_THREADS
++#include <thread>
++
+ namespace duckdb {
+ using std::thread;
+ using thread_id = std::thread::id;
+diff --git a/src/include/duckdb/common/types/value.hpp b/src/include/duckdb/common/types/value.hpp
+index 7dcfca9377d..64bd32c0f57 100644
+--- a/src/include/duckdb/common/types/value.hpp
++++ b/src/include/duckdb/common/types/value.hpp
+@@ -47,6 +47,11 @@ public:
+ 	DUCKDB_API explicit Value(LogicalType type = LogicalType::SQLNULL);
+ 	//! Create an INTEGER value
+ 	DUCKDB_API Value(int32_t val); // NOLINT: Allow implicit conversion from `int32_t`
++#if defined(ESP_PLATFORM) && !defined(__clang__)
++	// Espressif GCC's int32_t is long, so integer literals need an exact overload.
++	Value(int val) : Value(static_cast<int32_t>(val)) {
++	}
++#endif
+ 	//! Create a BOOLEAN value
+ 	explicit DUCKDB_API Value(bool val);
+ 	//! Create a BIGINT value
+diff --git a/src/include/duckdb/common/uhugeint.hpp b/src/include/duckdb/common/uhugeint.hpp
+index a579e37e4b2..db92f935a90 100644
+--- a/src/include/duckdb/common/uhugeint.hpp
++++ b/src/include/duckdb/common/uhugeint.hpp
+@@ -74,6 +74,10 @@ public:
+ 	DUCKDB_API explicit operator int8_t() const;
+ 	DUCKDB_API explicit operator int16_t() const;
+ 	DUCKDB_API explicit operator int32_t() const;
++#if defined(ESP_PLATFORM) && !defined(__clang__)
++	explicit operator int() const { return static_cast<int>(static_cast<int32_t>(*this)); }
++	explicit operator unsigned int() const { return static_cast<unsigned int>(static_cast<uint32_t>(*this)); }
++#endif
+ 	DUCKDB_API explicit operator int64_t() const;
+ 	DUCKDB_API operator hugeint_t() const; // NOLINT: Allow implicit conversion from `uhugeint_t`
+ };
+diff --git a/src/main/http/http_transport_manager.cpp b/src/main/http/http_transport_manager.cpp
+index ac7658fc50a..4d0455d4bc4 100644
+--- a/src/main/http/http_transport_manager.cpp
++++ b/src/main/http/http_transport_manager.cpp
+@@ -6,7 +6,7 @@
+ #include "duckdb/main/config.hpp"
+ #include "duckdb/main/database.hpp"
+
+-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
++#if !defined(_WIN32) && !defined(__EMSCRIPTEN__) && !defined(ESP_PLATFORM)
+ #include <sys/resource.h>
+ #endif
+
+@@ -232,7 +232,7 @@ idx_t HTTPTransportManager::CalculateCapacity(idx_t system_concurrency, optional
+ }
+
+ optional_idx HTTPTransportManager::GetFileDescriptorLimit() {
+-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
++#if !defined(_WIN32) && !defined(__EMSCRIPTEN__) && !defined(ESP_PLATFORM)
+ 	struct rlimit limit;
+ 	if (getrlimit(RLIMIT_NOFILE, &limit) != 0 || limit.rlim_cur == RLIM_INFINITY) {
+ 		return optional_idx();
+diff --git a/src/parallel/task_scheduler.cpp b/src/parallel/task_scheduler.cpp
+index a4106a02057..7649453abbf 100644
+--- a/src/parallel/task_scheduler.cpp
++++ b/src/parallel/task_scheduler.cpp
+@@ -359,7 +359,7 @@ void TaskScheduler::YieldThread() {
+ }
+
+ idx_t TaskScheduler::GetEstimatedCPUId() {
+-#if defined(__EMSCRIPTEN__)
++#if defined(__EMSCRIPTEN__) || defined(DUCKDB_NO_THREADS)
+ 	// FIXME: Wasm + multithreads can likely be implemented as
+ 	//   return return (idx_t)std::hash<std::thread::id>()(std::this_thread::get_id());
+ 	return 0;
+diff --git a/src/storage/block_allocator.cpp b/src/storage/block_allocator.cpp
+index 60b19d2d77d..c4787ac5abf 100644
+--- a/src/storage/block_allocator.cpp
++++ b/src/storage/block_allocator.cpp
+@@ -9,7 +9,7 @@
+
+ #if defined(_WIN32)
+ #include "duckdb/common/windows.hpp"
+-#else
++#elif !defined(ESP_PLATFORM)
+ #include <sys/mman.h>
+ #endif
+ #ifdef __MVS__
+@@ -25,9 +25,7 @@ static data_ptr_t AllocateVirtualMemory(const idx_t size) {
+ #if INTPTR_MAX == INT32_MAX
+ 	// Disable on 32-bit
+ 	return nullptr;
+-#endif
+-
+-#if defined(_WIN32)
++#elif defined(_WIN32)
+ 	// This returns nullptr on failure
+ 	return data_ptr_t(VirtualAlloc(nullptr, size, MEM_RESERVE, PAGE_NOACCESS));
+ #else
+@@ -37,10 +35,10 @@ static data_ptr_t AllocateVirtualMemory(const idx_t size) {
+ }
+
+ static void FreeVirtualMemory(const data_ptr_t pointer, const idx_t size) {
+-	bool success;
++	bool success = false;
+ #if defined(_WIN32)
+ 	success = VirtualFree(pointer, 0, MEM_RELEASE);
+-#else
++#elif !defined(ESP_PLATFORM)
+ 	success = munmap(pointer, size) == 0;
+ #endif
+ 	if (!success) {
+@@ -66,7 +64,7 @@ static void OnFirstAllocation(const data_ptr_t pointer, const idx_t size) {
+ }
+
+ static void OnDeallocation(const data_ptr_t pointer, const idx_t size) {
+-	bool success;
++	bool success = false;
+ #if defined(_WIN32)
+ 	success = VirtualFree(pointer, size, MEM_DECOMMIT);
+ #elif defined(__APPLE__)
+@@ -74,7 +72,7 @@ static void OnDeallocation(const data_ptr_t pointer, const idx_t size) {
+ #elif defined(__MVS__)
+ 	// the madvice functionality is not available on z/OS in any form
+ 	success = true;
+-#else
++#elif !defined(ESP_PLATFORM)
+ 	success = madvise(pointer, size, MADV_DONTNEED) == 0;
+ #endif
+ 	if (!success) {
+diff --git a/third_party/fsst/libfsst.cpp b/third_party/fsst/libfsst.cpp
+index 875fddcae80..649cd6bbc44 100644
+--- a/third_party/fsst/libfsst.cpp
++++ b/third_party/fsst/libfsst.cpp
+@@ -397,7 +397,7 @@ extern "C" duckdb_fsst_encoder_t* duckdb_fsst_duplicate(duckdb_fsst_encoder_t *e
+ }
+
+ // export a symbol table in compact format.
+-extern "C" u32 duckdb_fsst_export(duckdb_fsst_encoder_t *encoder, u8 *buf) {
++extern "C" unsigned int duckdb_fsst_export(duckdb_fsst_encoder_t *encoder, u8 *buf) {
+ 	Encoder *e = (Encoder*) encoder;
+ 	// In ->version there is a versionnr, but we hide also suffixLim/terminator/nSymbols there.
+ 	// This is sufficient in principle to *reconstruct* a duckdb_fsst_encoder_t from a duckdb_fsst_decoder_t
+@@ -438,7 +438,7 @@ extern "C" u32 duckdb_fsst_export(duckdb_fsst_encoder_t *encoder, u8 *buf) {
+
+ #define FSST_CORRUPT 32774747032022883 /* 7-byte number in little endian containing "corrupt" */
+
+-extern "C" u32 duckdb_fsst_import(duckdb_fsst_decoder_t *decoder, const u8 *buf, size_t buf_size) {
++extern "C" unsigned int duckdb_fsst_import(duckdb_fsst_decoder_t *decoder, const u8 *buf, size_t buf_size) {
+ 	u64 version = 0;
+ 	u32 code, pos = 17;
+ 	u8 lenHisto[8];
+diff --git a/third_party/re2/re2/prog.cc b/third_party/re2/re2/prog.cc
+index 716b6f3eef7..13281bdfeef 100644
+--- a/third_party/re2/re2/prog.cc
++++ b/third_party/re2/re2/prog.cc
+@@ -55,7 +55,7 @@ void Prog::Inst::InitEmptyWidth(EmptyOp empty, uint32_t out) {
+   empty_ = empty;
+ }
+
+-void Prog::Inst::InitMatch(int32_t id) {
++void Prog::Inst::InitMatch(int id) {
+   DCHECK_EQ(out_opcode_, 0);
+   set_opcode(kInstMatch);
+   match_id_ = id;
+diff --git a/third_party/snappy/snappy-stubs-public.h b/third_party/snappy/snappy-stubs-public.h
+index afaca195f3f..6a4c4f08c53 100755
+--- a/third_party/snappy/snappy-stubs-public.h
++++ b/third_party/snappy/snappy-stubs-public.h
+@@ -45,6 +45,14 @@
+ #include <sys/uio.h>
+ #endif  // HAVE_SYS_UIO_H
+
++#if defined(ESP_PLATFORM) && !defined(iovec)
++struct iovec {
++  void* iov_base;
++  size_t iov_len;
++};
++#define iovec iovec
++#endif
++
+ #define SNAPPY_MAJOR 1
+ #define SNAPPY_MINOR 2
+ #define SNAPPY_PATCHLEVEL 1
+@@ -74,6 +82,14 @@ struct iovec {
+ #include <sys/uio.h>
+ #endif  // HAVE_SYS_UIO_H
+
++#if defined(ESP_PLATFORM) && !defined(iovec)
++struct iovec {
++  void* iov_base;
++  size_t iov_len;
++};
++#define iovec iovec
++#endif
++
+ #define SNAPPY_MAJOR 1
+ #define SNAPPY_MINOR 1
+ #define SNAPPY_PATCHLEVEL 7
+diff --git a/third_party/utf8proc/utf8proc.cpp b/third_party/utf8proc/utf8proc.cpp
+index bfea42744e4..5a2573d8a5f 100644
+--- a/third_party/utf8proc/utf8proc.cpp
++++ b/third_party/utf8proc/utf8proc.cpp
+@@ -522,8 +522,10 @@ UTF8PROC_DLLEXPORT utf8proc_ssize_t utf8proc_decompose_char(utf8proc_int32_t uc,
+   }
+   if (options & UTF8PROC_CHARBOUND) {
+     utf8proc_bool boundary;
++    utf8proc_int32_t state = last_boundclass ? *last_boundclass : 0;
+     boundary = grapheme_break_extended(0, property->boundclass, 0, property->indic_conjunct_break,
+-                                       last_boundclass);
++                                       last_boundclass ? &state : nullptr);
++    if (last_boundclass) *last_boundclass = state;
+     if (boundary) {
+       if (bufsize >= 1) dst[0] = -1; /* sentinel value for grapheme break */
+       if (bufsize >= 2) dst[1] = uc;
+diff --git a/third_party/zstd/common/xxhash.cpp b/third_party/zstd/common/xxhash.cpp
+index fc4d18b2e48..9434a7aad46 100644
+--- a/third_party/zstd/common/xxhash.cpp
++++ b/third_party/zstd/common/xxhash.cpp
+@@ -594,7 +594,7 @@ XXHASH_FORCE_INLINE_TEMPLATE XXH_errorcode XXH32_update_endian (XXH32_state_t* s
+
+     if (state->memsize) {   /* some data left from previous update */
+         XXH_memcpy((BYTE*)(state->mem32) + state->memsize, input, 16-state->memsize);
+-        {   const U32* p32 = state->mem32;
++        {   const unsigned int* p32 = state->mem32;
+             state->v1 = XXH32_round(state->v1, XXH_readLE32(p32, endian)); p32++;
+             state->v2 = XXH32_round(state->v2, XXH_readLE32(p32, endian)); p32++;
+             state->v3 = XXH32_round(state->v3, XXH_readLE32(p32, endian)); p32++;

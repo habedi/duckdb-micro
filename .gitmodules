@@ -1,0 +1,20 @@
+[submodule "external/duckdb"]
+	path = external/duckdb
+	url = https://github.com/duckdb/duckdb.git
+	shallow = true
+[submodule "external/esp-idf"]
+	path = external/esp-idf
+	url = https://github.com/espressif/esp-idf.git
+	shallow = true
+[submodule "external/esp_hosted"]
+	path = external/esp_hosted
+	url = https://github.com/espressif/esp-hosted-mcu.git
+	shallow = true
+[submodule "external/esp_wifi_remote"]
+	path = external/esp_wifi_remote
+	url = https://github.com/espressif/esp-wifi-remote.git
+	shallow = true
+[submodule "external/esp_littlefs"]
+	path = external/esp_littlefs
+	url = https://github.com/joltwallet/esp_littlefs.git
+	shallow = true

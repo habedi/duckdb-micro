@@ -1,0 +1,34 @@
+[scheme:duckdb_external_bss]
+entries:
+    bss -> extern_ram
+    common -> extern_ram
+
+[mapping:duckdb_external_bss]
+archive: libduckdb_esp32p4.a
+entries:
+    * (duckdb_external_bss)
+
+[mapping:duckdb_core_functions_bss]
+archive: libcore_functions_extension.a
+entries:
+    * (duckdb_external_bss)
+
+[mapping:duckdb_parquet_bss]
+archive: libparquet_extension.a
+entries:
+    * (duckdb_external_bss)
+
+[mapping:duckdb_json_bss]
+archive: libjson_extension.a
+entries:
+    * (duckdb_external_bss)
+
+[mapping:duckdb_zstd_bss]
+archive: libduckdb_zstd.a
+entries:
+    * (duckdb_external_bss)
+
+[mapping:duckdb_yyjson_bss]
+archive: libduckdb_yyjson.a
+entries:
+    * (duckdb_external_bss)

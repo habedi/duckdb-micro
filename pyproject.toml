@@ -1,0 +1,19 @@
+[project]
+name = "duckdb-micro"
+version = "0.1.0"
+description = "The Python environment for the DuckDB Micro project"
+
+requires-python = ">=3.15,<4.0"
+dependencies = [
+    "python-dotenv>=1.1.0",
+    "pre-commit>=4.6.2",
+    "esptool>=4.8.0",
+    "imgtool>=2.4.0",
+    "mcp>=2.1.0",
+]
+
+[dependency-groups]
+test = [
+    "jinja2>=3.1.6",
+    "jsonschema>=4.0.0"
+]
