@@ -4,7 +4,8 @@
 
 * **Toolchain & Cross-Compilation**
     * [x] ESP-IDF v6.1 cross-compilation support using `riscv32-esp-elf` (GCC 15.2).
-    * [x] Espressif LLVM (`esp-clang` v21.1.3) toolchain with aggressive size optimization (`-Oz`), fitting `.flash.text` under the 16 MB ESP32-P4 virtual MMU instruction cache limit.
+    * [x] Espressif LLVM (`esp-clang` v21.1.3) toolchain with aggressive size optimization (`-Oz`), fitting `.flash.text` under the 16 MB ESP32-P4
+      virtual MMU instruction cache limit.
     * [x] Local-exec TLS model (`-ftls-model=local-exec`) resolving microcontroller thread-local storage relocations.
     * [x] Reproducible developer environment via Nix flake and Python 3.15.
     * [x] Upstream DuckDB 2.0 submodule integration with patch automation (`src/patches/duckdb-esp32p4.diff`).

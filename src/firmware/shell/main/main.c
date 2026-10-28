@@ -1789,11 +1789,25 @@ static void custom_completion(const char *buf, linenoiseCompletions *lc)
   closedir(d);
 }
 
+static int cmd_clear(int argc, char **argv)
+{
+  (void)argc;
+  (void)argv;
+  linenoiseClearScreen();
+  return 0;
+}
+
 static void register_commands(void)
 {
   esp_console_register_help_command();
 
   const esp_console_cmd_t cmds[] = {
+      {
+          .command = "clear",
+          .help = "Clear the terminal screen (also Ctrl+L)",
+          .hint = NULL,
+          .func = &cmd_clear,
+      },
 #if CONFIG_IDF_TARGET_ESP32P4
       {
           .command = "reset_c6",

@@ -40,6 +40,10 @@ static ssize_t backspace_read(int fd, void *buf, size_t len)
 int main(int argc, char **argv)
 {
   assert(argc >= 3);
+  if (strcmp(argv[2], "clear-screen") == 0) {
+    assert(cmd_clear(0, NULL) == 0);
+    return 0;
+  }
   snprintf(s_cwd, sizeof(s_cwd), "%s", argv[1]);
   linenoiseCompletions lc = {0, NULL};
   custom_completion(argv[2], &lc);
@@ -127,6 +131,11 @@ class AutocompleteTests(unittest.TestCase):
         self.assertEqual(self.complete("cd d", "/data/", cwd="/"), ["cd /data/"])
         self.assertEqual(self.complete("cd /x"), [])
         self.assertEqual(self.complete("cd x", cwd="/"), [])
+
+    def test_clear_screen(self):
+        result = subprocess.run([str(self.binary), str(self.cwd), "clear-screen"],
+                                capture_output=True, check=True)
+        self.assertEqual(result.stdout, b"\x1b[H\x1b[2J")
 
     def test_spaces_quotes_and_backslashes_round_trip(self):
         for name in ('my file.txt', 'my"quote.txt', 'my\\file.txt'):

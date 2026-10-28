@@ -45,6 +45,10 @@
               unset PYTHONPATH
               export IDF_PATH="$PWD/external/esp-idf"
               export IDF_TOOLS_PATH="''${IDF_TOOLS_PATH:-$PWD/build/espressif}"
+              export IDF_CCACHE_ENABLE="''${IDF_CCACHE_ENABLE:-1}"
+              export CMAKE_C_COMPILER_LAUNCHER="''${CMAKE_C_COMPILER_LAUNCHER-ccache}"
+              export CMAKE_CXX_COMPILER_LAUNCHER="''${CMAKE_CXX_COMPILER_LAUNCHER-ccache}"
+              export CCACHE_DIR="''${CCACHE_DIR:-$PWD/build/ccache}"
             '';
           };
         }

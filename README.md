@@ -2,6 +2,7 @@
 
 [![Tests](https://img.shields.io/github/actions/workflow/status/habedi/duckdb-micro/tests.yml?label=tests&style=flat&labelColor=282c34&logo=github&logoColor=white)](https://github.com/habedi/duckdb-micro/actions/workflows/tests.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-007ec6?style=flat&labelColor=282c34&logo=open-source-initiative&logoColor=white)](https://github.com/habedi/duckdb-micro/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/habedi/duckdb-micro?include_prereleases&label=firmware-release&style=flat&labelColor=282c34&logo=github&sort=semver)](https://github.com/habedi/duckdb-micro/releases)
 
 ---
 
@@ -18,6 +19,9 @@ This project is an attempt to see how much of DuckDB's functionality can be made
 lacks a lot of conventional features like a lot of (fast) memory, a full-featured virtual memory system, etc.
 
 See the [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
+
+**This project is very experimental.
+You can download the latest pre-built firmware from the [releases page](https://github.com/habedi/duckdb-micro/releases).**
 
 ---
 
@@ -44,7 +48,7 @@ nix develop
 
 ```shell
 make espidf-install
-make shell-build
+make shell-build # This may take a while
 ```
 
 #### 4. Flash the board
@@ -52,6 +56,8 @@ make shell-build
 ```shell
 make flash TTY=/dev/ttyACM0
 ```
+
+The board resets and starts the firmware after flashing.
 
 #### 5. Connect to the board
 
@@ -74,12 +80,6 @@ Press Enter twice after opening the console to get to the MicroShell (`msh>`) pr
 ### Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to make a contribution.
-
-### Build Cleanup
-
-`make clean` removes host test binaries and keeps the DuckDB and firmware builds for faster incremental builds.
-`make clean-all` also removes the DuckDB and firmware build directories, so the next firmware build can take a long time.
-Both commands preserve installed toolchains, hardware logs, flash backups, and the applied DuckDB patch in `external/duckdb`.
 
 ### License
 

@@ -10,7 +10,7 @@ PYTHON ?= python3
 
 FORMAT_FILES := $(wildcard src/firmware/main/*.cpp src/firmware/shell/main/*.cpp src/firmware/shell/main/duckdb_console.h test/*.cpp)
 
-.PHONY: help clean clean-all submodules probe-build shell-build shell-flash flash probe-flash console check-shell check-probe espidf-install test probe-test shell-test format lint setup-hooks test-hooks
+.PHONY: help clean clean-all submodules probe-build shell-build firmware-package shell-flash flash probe-flash console check-shell check-probe espidf-install test probe-test shell-test format lint setup-hooks test-hooks
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' Makefile
@@ -19,7 +19,7 @@ clean: ## Remove host test binaries; keep the files in `build/` directory
 	rm -rf -- build/test
 
 clean-all: clean ## Also remove DuckDB and firmware builds; keep tools, logs, and backups
-	rm -rf -- build/duckdb build/firmware build/shell
+	rm -rf -- build/duckdb build/firmware build/shell build/duckdb-micro-shell.tar.gz build/duckdb-micro-probe.tar.gz
 
 submodules: ## Initialize and update Git submodules recursively
 	git submodule update --init --recursive --depth 1
@@ -32,22 +32,26 @@ probe-flash: ## Flash the standalone SQL probe firmware (e.g. make probe-flash T
 	@export IDF_PATH="$${IDF_PATH:-$(CURDIR)/external/esp-idf}"; \
 	export IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}"; \
 	source "$$IDF_PATH/export.sh" >/dev/null 2>&1; \
-	(cd build/firmware && python -m esptool --chip esp32p4 --port $(TTY) --baud $(ESPTOOL_BAUD) --after no-reset write-flash @flash_args)
+	(cd build/firmware && python -m esptool --chip esp32p4 --port $(TTY) --baud $(ESPTOOL_BAUD) --after hard-reset write-flash @flash_args)
 
 shell-build: ## Build the shell firmware with interactive DuckDB
 	bash scripts/build-shell.sh
+
+firmware-package: ## Package existing shell and probe builds with their flashing files
+	tar -czf build/duckdb-micro-shell.tar.gz -C build/shell flash_args duckdb_shell.bin bootloader/bootloader.bin partition_table/partition-table.bin
+	tar -czf build/duckdb-micro-probe.tar.gz -C build/firmware flash_args duckdb_probe.bin bootloader/bootloader.bin partition_table/partition-table.bin
 
 shell-flash: ## Flash the shell firmware to the ESP32-P4 (e.g. make flash TTY=/dev/ttyACM0)
 	@if [ ! -f build/shell/flash_args ]; then $(MAKE) shell-build; fi
 	@export IDF_PATH="$${IDF_PATH:-$(CURDIR)/external/esp-idf}"; \
 	export IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}"; \
 	source "$$IDF_PATH/export.sh" >/dev/null 2>&1; \
-	(cd build/shell && python -m esptool --chip esp32p4 --port $(TTY) --baud $(ESPTOOL_BAUD) --after no-reset write-flash @flash_args)
+	(cd build/shell && python -m esptool --chip esp32p4 --port $(TTY) --baud $(ESPTOOL_BAUD) --after hard-reset write-flash @flash_args)
 
 flash: shell-flash ## Alias for shell-flash
 
 console: ## Connect to ESP32-P4 serial console (e.g. make console [TTY=/dev/ttyACM0])
-	$(PYTHON) -m serial.tools.miniterm $(TTY) $(BAUD)
+	$(PYTHON) -m serial.tools.miniterm --raw $(TTY) $(BAUD)
 
 check-shell: ## Run hardware serial check for the shell (e.g. make check-shell [TTY=/dev/ttyACM0])
 	@export IDF_PATH="$${IDF_PATH:-$(CURDIR)/external/esp-idf}"; \
@@ -61,8 +65,10 @@ check-probe: ## Run hardware serial check for standalone probe (e.g. make check-
 	source "$$IDF_PATH/export.sh" >/dev/null 2>&1; \
 	python scripts/check-board.py $(TTY)
 
-espidf-install: ## Install the pinned ESP-IDF tools and Python environment for ESP32-P4
-	IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}" bash external/esp-idf/install.sh esp32p4
+espidf-install: ## Install the pinned ESP-IDF tools, Espressif Clang, and Python environment for ESP32-P4
+	export IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}"; \
+	bash external/esp-idf/install.sh esp32p4; \
+	$(PYTHON) external/esp-idf/tools/idf_tools.py install esp-clang
 
 test: probe-test shell-test ## Run host portability, shell-path, and editor regression tests
 	$(PYTHON) -m unittest discover -s test -p 'test_*.py'
