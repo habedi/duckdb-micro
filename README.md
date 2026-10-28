@@ -6,7 +6,8 @@
 
 ---
 
-DuckDB Micro is an experimental DuckDB 2.0 port to ESP32-P4 (more specifically, the [Waveshare ESP32-P4-WIFI6](https://www.waveshare.com/wiki/ESP32-P4-WIFI6) board; see image below).
+DuckDB Micro is an experimental DuckDB 2.0 port to ESP32-P4 (more specifically,
+the [Waveshare ESP32-P4-WIFI6](https://www.waveshare.com/wiki/ESP32-P4-WIFI6) board; see image below).
 
 <div align="center">
   <img alt="MicroShell" src="docs/assets/images/esp32-p4-wifi6.png" width="40%">
