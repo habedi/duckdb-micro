@@ -102,3 +102,39 @@ make shell-test
 ```shell
 make check-shell TTY=/dev/ttyACM0
 ```
+
+### Stress Testing and Memory Trends
+
+Run a smoke test with a mounted SD card and no other serial console attached:
+
+```shell
+make check-stress TTY=/dev/ttyACM0
+```
+
+The runner resets the board, runs 3 warm-up cycles, and measures 20 more cycles.
+Each cycle opens and closes in-memory and persistent databases, checks aggregation and
+join results, reads JSON, writes and reads Parquet, and verifies committed rows after reopening.
+Workloads use 1,000 rows to stay within the firmware's 8 MB buffer limit.
+
+For an eight-hour run after warm-up:
+
+```shell
+make check-stress TTY=/dev/ttyACM0 STRESS_ARGS='--duration 28800'
+```
+
+The unique serial log and CSV report are saved under `build/hardware/stress-*`.
+The CSV records elapsed time, cycle time, free bytes, minimum free bytes, largest free block,
+and fragmentation (`100 * (1 - largest / free)`) for internal SRAM and PSRAM after each cycle.
+Minimum free bytes are allocator low-water marks since boot, not per-cycle measurements.
+
+The test fails on firmware faults, allocation failures, SQL errors, incorrect results,
+or a 60-second command timeout. It also fails when free memory or the largest block falls
+more than 5% below the last warm-up sample for 3 consecutive measured cycles.
+These thresholds flag sustained loss; they do not prove the absence of small leaks.
+Use `STRESS_ARGS='--cycles 100 --warmup 5 --max-loss-percent 2'` to adjust them.
+Duration runs finish complete cycles and measure at least 3 cycles.
+
+Files use a unique `duckdb-stress-*` prefix and are removed after success.
+Failed runs retain their files for inspection; the runner prints their prefix.
+`STRESS_ARGS='--storage /data'` uses LittleFS instead of SD storage, but repeated writes
+consume flash erase cycles. These tests cover clean reopen behavior, not abrupt power loss.

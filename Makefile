@@ -7,10 +7,11 @@ TTY ?= $(DEFAULT_TTY)
 BAUD ?= 115200
 ESPTOOL_BAUD ?= 921600
 PYTHON ?= python3
+STRESS_ARGS ?=
 
 FORMAT_FILES := $(wildcard src/firmware/main/*.cpp src/firmware/shell/main/*.cpp src/firmware/shell/main/duckdb_console.h test/*.cpp)
 
-.PHONY: help clean clean-all submodules probe-build shell-build firmware-package shell-flash flash probe-flash console check-shell check-probe espidf-install test probe-test shell-test format lint setup-hooks test-hooks
+.PHONY: help clean clean-all submodules probe-build shell-build firmware-package shell-flash flash probe-flash console check-shell check-probe check-stress espidf-install test probe-test shell-test format lint setup-hooks test-hooks
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' Makefile
@@ -58,6 +59,9 @@ check-shell: ## Run hardware serial check for the shell (e.g. make check-shell [
 	export IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}"; \
 	source "$$IDF_PATH/export.sh" >/dev/null 2>&1; \
 	python scripts/check-shell.py $(TTY)
+
+check-stress: ## Stress SQL and storage, and record heap trends (STRESS_ARGS='--duration 28800' for overnight)
+	$(PYTHON) scripts/check-stress.py $(TTY) $(STRESS_ARGS)
 
 check-probe: ## Run hardware serial check for standalone probe (e.g. make check-probe [TTY=/dev/ttyACM0])
 	@export IDF_PATH="$${IDF_PATH:-$(CURDIR)/external/esp-idf}"; \
