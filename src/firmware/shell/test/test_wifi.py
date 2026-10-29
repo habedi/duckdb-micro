@@ -26,12 +26,15 @@ typedef int nvs_handle_t;
 #define IPSTR "%d"
 #define IP2STR(ip) (*(ip))
 #define ESP_LOGI(...) ((void)0)
+#define ESP_LOGW(...) ((void)0)
 typedef struct { struct { unsigned char ssid[32], password[64]; } sta; } wifi_config_t;
 typedef struct { int ip, gw; } esp_netif_ip_info_t;
 static bool s_wifi_initialized = true, s_wifi_connected;
 static int s_ip_sem, s_sta_netif;
 static int open_error, erase_error, commit_error, erase_calls, commit_calls, close_calls;
-static int config_calls, disconnect_calls;
+static int config_calls, disconnect_calls, connect_calls, set_calls, waits;
+static int config_error, connect_error;
+static const char *esp_err_to_name(int error) { (void)error; return "SDK error"; }
 static wifi_config_t captured;
 static char stored_ssid[33], stored_password[65];
 static int nvs_open(const char *name, int mode, nvs_handle_t *handle)
@@ -46,7 +49,7 @@ static int nvs_get_str(int handle, const char *key, char *out, size_t *size)
   return ESP_OK;
 }
 static int nvs_set_str(int handle, const char *key, const char *value)
-{ (void)handle; (void)key; (void)value; return ESP_OK; }
+{ (void)handle; (void)key; (void)value; set_calls++; return ESP_OK; }
 static int nvs_erase_all(int handle)
 { (void)handle; erase_calls++; return erase_error; }
 static int nvs_commit(int handle)
@@ -55,9 +58,9 @@ static void nvs_close(int handle) { (void)handle; close_calls++; }
 static void vTaskDelay(int ticks) { (void)ticks; abort(); }
 static int esp_wifi_disconnect(void) { disconnect_calls++; return ESP_OK; }
 static int esp_wifi_set_config(int iface, const wifi_config_t *cfg)
-{ (void)iface; captured = *cfg; config_calls++; return ESP_OK; }
-static int esp_wifi_connect(void) { return ESP_OK; }
-static int xSemaphoreTake(int sem, int ticks) { (void)sem; return ticks != 0; }
+{ (void)iface; captured = *cfg; config_calls++; return config_error; }
+static int esp_wifi_connect(void) { connect_calls++; return connect_error; }
+static int xSemaphoreTake(int sem, int ticks) { (void)sem; if (ticks) waits++; return ticks != 0; }
 static int esp_netif_get_ip_info(int netif, esp_netif_ip_info_t *info)
 { (void)netif; info->ip = 1; info->gw = 2; return ESP_OK; }
 """
@@ -85,6 +88,21 @@ int main(int argc, char **argv)
     commit_error = 0;
     assert(clear_wifi_credentials());
     assert(commit_calls == 2 && close_calls == 3);
+  } else if (strcmp(argv[1], "errors") == 0) {
+    strcpy(stored_ssid, "old-network");
+    strcpy(stored_password, "old-password");
+    char *args[] = {"wifi_connect", "new-network", "new-password"};
+    config_error = -1;
+    assert(cmd_wifi_connect(3, args) == 1);
+    assert(connect_calls == 0 && waits == 0 && set_calls == 0);
+    boot_connect();
+    assert(connect_calls == 0 && set_calls == 0);
+    config_error = 0;
+    connect_error = -1;
+    assert(cmd_wifi_connect(3, args) == 1);
+    assert(connect_calls == 1 && waits == 0 && set_calls == 0);
+    boot_connect();
+    assert(connect_calls == 2 && set_calls == 0);
   } else if (strcmp(argv[1], "credentials") == 0) {
     memset(stored_ssid, 's', 32);
     memset(stored_password, 'a', 64);
@@ -160,6 +178,9 @@ class WifiTests(unittest.TestCase):
 
     def test_erase_errors(self):
         self.run_case("erase")
+
+    def test_sdk_errors_do_not_wait_or_save_credentials(self):
+        self.run_case("errors")
 
     def test_maximum_and_empty_credentials(self):
         self.run_case("credentials")

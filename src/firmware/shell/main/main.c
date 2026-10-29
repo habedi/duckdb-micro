@@ -1367,13 +1367,26 @@ static int cmd_wifi_connect(int argc, char **argv)
 
   esp_wifi_disconnect();
   s_wifi_connected = false;
-  esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg);
+  esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg);
+  memset(&wifi_cfg, 0, sizeof(wifi_cfg));
+  if (err != ESP_OK)
+    {
+      printf("wifi_connect: configuration failed: %s\n", esp_err_to_name(err));
+      memset(password, 0, sizeof(password));
+      return 1;
+    }
 
   /* Drop any token left by an earlier attempt */
   xSemaphoreTake(s_ip_sem, 0);
 
   printf("Connecting to %s...\n", ssid);
-  esp_wifi_connect();
+  err = esp_wifi_connect();
+  if (err != ESP_OK)
+    {
+      printf("wifi_connect: connection failed: %s\n", esp_err_to_name(err));
+      memset(password, 0, sizeof(password));
+      return 1;
+    }
 
   if (xSemaphoreTake(s_ip_sem, pdMS_TO_TICKS(15000)) == pdTRUE)
     {
@@ -1640,8 +1653,16 @@ static void init_wifi(void)
       memcpy(wifi_cfg.sta.ssid, saved_ssid, sizeof(wifi_cfg.sta.ssid));
       memcpy(wifi_cfg.sta.password, saved_pass, sizeof(wifi_cfg.sta.password));
       memset(saved_pass, 0, sizeof(saved_pass));
-      esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg);
-      esp_wifi_connect();
+      esp_err_t connect_err = esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg);
+      memset(&wifi_cfg, 0, sizeof(wifi_cfg));
+      if (connect_err == ESP_OK)
+        {
+          connect_err = esp_wifi_connect();
+        }
+      if (connect_err != ESP_OK)
+        {
+          ESP_LOGW(TAG, "Auto-connect failed: %s", esp_err_to_name(connect_err));
+        }
     }
 }
 

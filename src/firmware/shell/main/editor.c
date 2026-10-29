@@ -313,8 +313,17 @@ static int editorSave(void)
 {
   if (E.filename[0] == '\0') return -1;
 
-  FILE *fp = fopen(E.filename, "w");
+  char temporary[sizeof(E.filename) + 32];
+  const char *basename = strrchr(E.filename, '/');
+  int directory_len = basename ? (int)(basename - E.filename + 1) : 0;
+  snprintf(temporary, sizeof(temporary), "%.*s.msh-save-XXXXXX", directory_len, E.filename);
+  int fd = mkstemp(temporary);
+  FILE *fp = fd < 0 ? NULL : fdopen(fd, "w");
   if (!fp) {
+    if (fd >= 0) {
+      close(fd);
+      unlink(temporary);
+    }
     editorSetStatusMessage("Error: Could not open file for writing!");
     return -1;
   }
@@ -329,10 +338,47 @@ static int editorSave(void)
     total_bytes += E.row[i].size + 1;
   }
   if (ferror(fp) != 0) failed = true;
+  if (fflush(fp) != 0 || fsync(fileno(fp)) != 0) failed = true;
   if (fclose(fp) != 0) failed = true;
   if (failed) {
-    editorSetStatusMessage("Error: Write failed, file is incomplete!");
+    unlink(temporary);
+    editorSetStatusMessage("Error: Write failed; original file kept.");
     return -1;
+  }
+  if (rename(temporary, E.filename) != 0) {
+    if (errno != EEXIST) {
+      unlink(temporary);
+      editorSetStatusMessage("Error: Could not replace file; original file kept.");
+      return -1;
+    }
+    /* FAT cannot replace a file with rename; retain the original until replacement succeeds. */
+    char backup[sizeof(temporary)];
+    snprintf(backup, sizeof(backup), "%.*s.msh-backup-XXXXXX", directory_len, E.filename);
+    int backup_fd = mkstemp(backup);
+    if (backup_fd < 0) {
+      unlink(temporary);
+      editorSetStatusMessage("Error: Could not create backup; original file kept.");
+      return -1;
+    }
+    int close_result = close(backup_fd);
+    if (unlink(backup) != 0 || close_result != 0 || rename(E.filename, backup) != 0) {
+      unlink(temporary);
+      editorSetStatusMessage("Error: Could not back up file; original file kept.");
+      return -1;
+    }
+    if (rename(temporary, E.filename) != 0) {
+      if (rename(backup, E.filename) != 0) {
+        printf("nano: original file kept at %s\n", backup);
+        editorSetStatusMessage("Error: Replacement failed; original is in backup file.");
+      } else {
+        editorSetStatusMessage("Error: Replacement failed; original file restored.");
+      }
+      unlink(temporary);
+      return -1;
+    }
+    if (unlink(backup) != 0) {
+      printf("nano: saved file; previous contents kept at %s\n", backup);
+    }
   }
   E.dirty = 0;
   char msg[sizeof(E.filename) + 64];

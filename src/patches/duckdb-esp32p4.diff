@@ -406,35 +406,36 @@ index b34970e7718..9623d10897b 100644
  	}
  	if (key == "format") {
 diff --git a/src/common/allocator/allocator_standard.cpp b/src/common/allocator/allocator_standard.cpp
-index d74816ed1ab..572e915ec6c 100644
+index d74816ed1ab..f7c43aede53 100644
 --- a/src/common/allocator/allocator_standard.cpp
 +++ b/src/common/allocator/allocator_standard.cpp
-@@ -5,6 +5,10 @@
+@@ -5,6 +5,11 @@
  #include "duckdb/common/assert.hpp"
  #include "duckdb/common/exception.hpp"
  #include "duckdb/common/helper.hpp"
 +#ifdef ESP_PLATFORM
 +#include <cstddef>
 +#include <cstdlib>
++#include "esp_heap_caps.h"
 +#endif
 
  #ifdef DUCKDB_DEBUG_ALLOCATION
  #include "duckdb/common/mutex.hpp"
-@@ -17,7 +21,13 @@
+@@ -17,7 +22,13 @@
  namespace duckdb {
 
  data_ptr_t Allocator::DefaultAllocate(PrivateAllocatorData *private_data, idx_t size) {
 +#ifdef ESP_PLATFORM
-+	// ESP-IDF's ordinary heap allocations can be only four-byte aligned; aligned_alloc
-+	// routes through heap_caps_aligned_alloc_default so it honors heap_caps_malloc_extmem_enable.
-+	auto default_allocate_result = aligned_alloc(alignof(std::max_align_t), size);
++	// Do not fall back to scarce internal SRAM when PSRAM is exhausted.
++	auto default_allocate_result = heap_caps_aligned_alloc(alignof(std::max_align_t), size,
++	                                                       MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 +#else
  	auto default_allocate_result = malloc(size);
 +#endif
  	if (!default_allocate_result) {
  		throw std::bad_alloc();
  	}
-@@ -30,7 +40,20 @@ void Allocator::DefaultFree(PrivateAllocatorData *private_data, data_ptr_t point
+@@ -30,7 +41,20 @@ void Allocator::DefaultFree(PrivateAllocatorData *private_data, data_ptr_t point
 
  data_ptr_t Allocator::DefaultReallocate(PrivateAllocatorData *private_data, data_ptr_t pointer, idx_t old_size,
                                          idx_t size) {

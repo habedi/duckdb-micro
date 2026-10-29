@@ -62,6 +62,10 @@ MicroShell provides standard utility commands:
 - System diagnostics: `ps`, `top`, `free`, `uname`, and `cpuinfo`.
 - System reboot: `reboot` to restart the microcontroller.
 
+The editor writes a temporary file before replacing the saved file. On FAT, it keeps the original in a `.msh-backup-*` file
+beside the edited file until replacement succeeds. If replacement and restoration fail, use `ls` to find the backup and `cp`
+to restore it. A power loss during FAT replacement can also leave the original at that backup path.
+
 ### Interactive DuckDB Console
 
 Run `duckdb` from `msh>` to enter the interactive SQL console:
