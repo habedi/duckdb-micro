@@ -58,7 +58,7 @@ shell-flash: ## Flash the shell firmware to the ESP32-P4 (e.g. make flash TTY=/d
 flash: shell-flash ## Alias for shell-flash
 
 console: ## Connect to ESP32-P4 serial console (e.g. make console [TTY=/dev/ttyACM0])
-	$(PYTHON) -m serial.tools.miniterm --raw $(TTY) $(BAUD)
+	$(PYTHON) -m serial.tools.miniterm --raw --eol CR $(TTY) $(BAUD)
 
 check-shell: ## Run hardware serial check for the shell (e.g. make check-shell [TTY=/dev/ttyACM0])
 	@export IDF_PATH="$${IDF_PATH:-$(CURDIR)/external/esp-idf}"; \
@@ -133,7 +133,8 @@ probe-test: ## Test the Unicode and math portability fixes on the host
 	$(TEST_RUNNER) build/test/test_unicode
 	$(CXX) $(CXXFLAGS) $(SANFLAGS) -std=c++17 -Os -Wall -Wextra -fno-builtin-llroundl \
 		test/test_llroundl.cpp src/firmware/main/llroundl.cpp -o build/test/test_llroundl $(LDFLAGS)
-	$(TEST_RUNNER) build/test/test_llroundl
+	# Valgrind changes x87 long-double precision; keep this arithmetic test native.
+	build/test/test_llroundl
 
 shell-test: ## Run shell path, editor, completion, filesystem, and Wi-Fi helper host tests
 	mkdir -p build/test

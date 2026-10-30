@@ -66,6 +66,9 @@ The editor writes a temporary file before replacing the saved file. On FAT, it k
 beside the edited file until replacement succeeds. If replacement and restoration fail, use `ls` to find the backup and `cp`
 to restore it. A power loss during FAT replacement can also leave the original at that backup path.
 
+`make console` sends CR for Enter.
+With another serial terminal, select CR line endings to avoid an extra empty prompt from CRLF input.
+
 ### Interactive DuckDB Console
 
 Run `duckdb` from `msh>` to enter the interactive SQL console:
