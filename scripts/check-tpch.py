@@ -160,12 +160,13 @@ def run_queries(port, capture, report, manifest, args):
 
     writer = csv.writer(report)
     writer.writerow(("query", "phase", "iteration", "query_ms", "tier", "free_bytes",
-                     "largest_block_bytes"))
+                     "minimum_free_bytes", "largest_block_bytes"))
     for query in manifest["queries"]:
         if query["number"] not in args.queries:
             continue
         for iteration in range(args.repeats + 1):
             command("duckdb", b"duckdb> ")
+            command(f"SET memory_limit='{args.memory_limit_mb}MB';")
             command(f"ATTACH '{args.database}' AS tpch (READ_ONLY);")
             command("USE tpch;")
             output = command(query["sql"] + ";")
@@ -177,7 +178,7 @@ def run_queries(port, capture, report, manifest, args):
             phase = "warmup" if iteration == 0 else "measured"
             for tier, metrics in sample.items():
                 writer.writerow((query["number"], phase, iteration, elapsed, tier,
-                                 metrics["free"], metrics["largest"]))
+                                 metrics["free"], metrics["minimum"], metrics["largest"]))
             report.flush()
             print(f"Q{query['number']:02} {phase} {iteration}: {elapsed} ms, results match",
                   flush=True)
@@ -209,7 +210,7 @@ def run(args):
     report_path = features.log.with_suffix(".csv")
     features.log.with_suffix(".json").write_text(json.dumps(dict(
         manifest=manifest, database=args.database, generated_database=generated,
-        repeats=args.repeats, queries=args.queries,
+        repeats=args.repeats, queries=args.queries, memory_limit_mb=args.memory_limit_mb,
         timeout=args.timeout), indent=2) + "\n")
     print(f"Serial log: {features.log}\nReport: {report_path}", flush=True)
     with serial.Serial(port=None, baudrate=115200, timeout=0.2, exclusive=True) as port, \
@@ -247,6 +248,8 @@ def arguments(argv=None):
                           default=ROOT / "build/tpch/manifest.json")
     hardware.add_argument("--duckdb", default="duckdb", help="host DuckDB CLI with tpch installed")
     hardware.add_argument("--scale", type=float, choices=(0.001, 0.01))
+    hardware.add_argument("--memory-limit-mb", type=int, choices=(8, 12), default=8,
+                          help="query buffer limit in MB; firmware default stays unchanged")
     hardware.add_argument("--queries", type=int, nargs="+", choices=QUERIES,
                           default=DEFAULT_QUERIES, help="query numbers (default: 1 6 12)")
     hardware.add_argument("--database",

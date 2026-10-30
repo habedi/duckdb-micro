@@ -194,3 +194,13 @@ database without loading or deleting it. Its contents must match the host manife
 buffer limit at scale factor 0.001 and are excluded from the default subset; use
 `--queries 3 14` to investigate that limit. Larger queries can also exhaust the board's
 memory budget.
+
+For a session-only 12 MB query buffer test, leaving the firmware default at 8 MB:
+
+```shell
+make check-tpch TPCH_ARGS='--memory-limit-mb 12 --queries 1 6 3 12 14'
+```
+
+The selected limit is applied in each query session and saved in the run settings.
+Imports retain the firmware limit. The CSV also records minimum free bytes since boot;
+this low-water mark includes loading and earlier queries, rather than measuring each query alone.
