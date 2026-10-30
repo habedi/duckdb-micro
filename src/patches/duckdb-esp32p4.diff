@@ -1832,3 +1832,37 @@ diff --git a/tools/shell/shell_renderer.cpp b/tools/shell/shell_renderer.cpp
  	loaded_row_count += chunk->size();
  	chunks.push_back(std::move(varchar_chunk));
  	return true;
+diff --git a/src/common/thread_util.cpp b/src/common/thread_util.cpp
+--- a/src/common/thread_util.cpp
++++ b/src/common/thread_util.cpp
+@@ -5,6 +5,11 @@
+ #include "duckdb/common/helper.hpp"
+ #include "duckdb/common/time_point.hpp"
+ #include "duckdb/main/client_context.hpp"
++
++#ifdef ESP_PLATFORM
++#include "freertos/FreeRTOS.h"
++#include "freertos/task.h"
++#endif
+
+ namespace duckdb {
+
+@@ -31,12 +36,17 @@
+ }
+
+ thread_id ThreadUtil::GetThreadId() {
++#ifdef ESP_PLATFORM
++	// DuckDB also runs in SDK tasks that are not registered as pthreads.
++	return thread_id(reinterpret_cast<std::thread::native_handle_type>(xTaskGetCurrentTaskHandle()));
++#else
+ 	return std::this_thread::get_id();
++#endif
+ }
+
+ string ThreadUtil::GetThreadIdString() {
+ 	std::ostringstream ss;
+-	ss << std::this_thread::get_id();
++	ss << GetThreadId();
+ 	return ss.str();
+ }
+

@@ -50,6 +50,7 @@ def main():
         command(f'write {prefix}.sql "CREATE TABLE script_data AS SELECT 6 * 7 AS x;"',
                 prompt=b"msh> ")
         command(f'write {prefix}.loop.sql ".read {prefix}.loop.sql"', prompt=b"msh> ")
+        command('duckdb --cli -c "SELECT 42"', b"omit -c", prompt=b"msh> ", allow_error=True)
         baseline = None
         streaks = {}
         for session in range(5):
@@ -72,6 +73,8 @@ def main():
                              "insert cli_copy"):
                     command(".mode " + mode)
                     command("SELECT 6 * 7 AS id, concat('cli_', 'value') AS label;", b"cli_value")
+                    if mode == "json":
+                        command("SELECT 'a' || chr(0) || 'b';", b"a\\u0000b")
                 command(".mode trash")
                 command("SELECT 6 * 7;")
                 command(".mode csv")

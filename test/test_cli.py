@@ -27,6 +27,92 @@ class CliTests(unittest.TestCase):
             subprocess.run(command, check=True)
             subprocess.run([*RUNNER, str(binary), *arguments], check=True)
 
+    def test_thread_ids_work_for_unregistered_freertos_tasks(self):
+        source = (ROOT / "external/duckdb/src/common/thread_util.cpp").read_text()
+        code = source[source.index("thread_id ThreadUtil::GetThreadId()"):
+                      source.index("\n#else\n\nvoid ThreadUtil::SleepMs")]
+        stubs = r'''
+#define ESP_PLATFORM 1
+#include <cassert>
+#include <thread>
+#include <sstream>
+#include <string>
+#include <cstdint>
+static void* current_task = reinterpret_cast<void*>(uintptr_t(0x1000));
+static void* xTaskGetCurrentTaskHandle() { return current_task; }
+using thread_id = std::thread::id;
+using string = std::string;
+struct ThreadUtil {
+    static thread_id GetThreadId();
+    static string GetThreadIdString();
+};
+'''
+        checks = r'''
+int main() {
+    auto first = ThreadUtil::GetThreadId();
+    assert(first != thread_id{} && first == ThreadUtil::GetThreadId());
+    assert(!ThreadUtil::GetThreadIdString().empty());
+    current_task = reinterpret_cast<void*>(uintptr_t(0x2000));
+    assert(first != ThreadUtil::GetThreadId());
+}
+'''
+        self.compile_run(stubs + code + checks)
+
+    def test_session_pointer_survives_cleanup_and_clears_after_exceptions(self):
+        source = (ROOT / "src/firmware/shell/main/duckdb_cli.cpp").read_text()
+        code = source[source.index("int duckdb_cli_run("):]
+        stubs = r'''
+#include <cassert>
+#include <cstdio>
+#include <memory>
+#include <string>
+#include <stdexcept>
+static bool fail_input;
+static int destroyed;
+static void cli_complete(const char*, int*) {}
+static void linenoiseSetCompletionCallback(void(*)(const char*, int*)) {}
+static void linenoiseSetHintsCallback(std::nullptr_t) {}
+namespace duckdb {
+struct Value { explicit Value(const char*) {} };
+template<class T> auto make_uniq() { return std::make_unique<T>(); }
+}
+namespace duckdb_shell {
+enum class InputMode { STANDARD };
+enum class PagerMode { PAGER_OFF };
+struct Prompt { void ParsePrompt(const char*) {} };
+struct Config { void SetOptionByName(const char*, duckdb::Value) {} };
+struct ShellState {
+    Config config;
+    FILE* out;
+    std::unique_ptr<Prompt> main_prompt = std::make_unique<Prompt>();
+    char continuePrompt[20];
+    std::string zDbFilename;
+    bool highlighting_enabled;
+    PagerMode pager_mode;
+    size_t max_width, max_rows, max_analyze_rows;
+    static ShellState*& GetReference() { static ShellState* state; return state; }
+    ~ShellState() { assert(GetReference() == this); ++destroyed; }
+    void Initialize() {}
+    void OpenDB() {}
+    int ProcessInput(InputMode) {
+        if (fail_input) throw std::runtime_error("injected");
+        return 7;
+    }
+};
+}
+'''
+        checks = r'''
+int main() {
+    assert(duckdb_cli_run(nullptr) == 7);
+    assert(destroyed == 1 && duckdb_shell::ShellState::GetReference() == nullptr);
+    fail_input = true;
+    try { duckdb_cli_run(nullptr); assert(false); }
+    catch (const std::runtime_error&) {}
+    assert(destroyed == 2 && duckdb_shell::ShellState::GetReference() == nullptr);
+}
+'''
+        self.compile_run(stubs + code + checks)
+
     def test_completion_bounds_and_prefixes(self):
         source = (ROOT / "src/firmware/shell/main/duckdb_cli.cpp").read_text()
         code = source[source.index("namespace {"):source.index("bool esp_cli_read_file(")]

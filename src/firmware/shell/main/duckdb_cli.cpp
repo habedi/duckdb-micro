@@ -80,10 +80,10 @@ bool Terminal::IsAtty() { return true; }
 
 int duckdb_cli_run(const char* path) {
     using namespace duckdb_shell;
-    auto state = duckdb::make_uniq<ShellState>();
     struct Reset {
         ~Reset() { ShellState::GetReference() = nullptr; }
     } reset;
+    auto state = duckdb::make_uniq<ShellState>();
     ShellState::GetReference() = state.get();
     state->out = stdout;
     state->Initialize();
