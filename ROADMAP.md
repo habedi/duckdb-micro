@@ -82,3 +82,7 @@
     * [x] Feature verification script (`scripts/check-features.py`) testing LittleFS, JSON, and Parquet on a physical board.
     * [ ] Automated continuous integration (CI) hardware testing rack.
     * [x] Stress testing and memory fragmentation benchmarks (`make check-stress`).
+    * [x] TPC-H subset runner with automatic serial fixture loading, host reference results, query timings, and memory reports (`make check-tpch`).
+    * [x] Hardware validation of TPC-H queries 1, 6, and 12 at scale factor 0.001.
+    * [ ] TPC-H needs 3 and 14 within the 8 MB buffer limit (both exceed it at scale factor 0.001).
+    * [ ] Hardware validation of the TPC-H subset at scale factor 0.01.
