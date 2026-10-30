@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 class NetworkJson {
-public:
+   public:
     NetworkJson(char* data, size_t capacity) : data(data), capacity(capacity) {}
     void append(const char* text) {
         size_t count = strlen(text);
@@ -28,7 +28,7 @@ public:
         append("\"");
     }
 
-private:
+   private:
     char* data;
     size_t capacity;
     size_t used = 0;

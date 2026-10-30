@@ -21,8 +21,11 @@ class NetworkTests(unittest.TestCase):
             path.write_text(source)
             binary = Path(directory) / "check"
             command = shlex.split(os.environ.get("CXX", "c++"))
+            for name in ("CXXFLAGS", "SANFLAGS"):
+                command += shlex.split(os.environ.get(name, ""))
             command += ["-std=c++17", "-Wall", "-Wextra", "-I",
                         str(ROOT / "src/firmware/shell/main"), str(path), "-o", str(binary)]
+            command += shlex.split(os.environ.get("LDFLAGS", ""))
             result = subprocess.run(command, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             result = subprocess.run([str(binary)], capture_output=True, text=True)
@@ -274,7 +277,7 @@ struct DBConfig {
 };
 struct DuckDB { DuckDB(const char*, DBConfig*) { assert(options == 6); } };
 struct Chunk {
-    idx_t size() const { return 1; }
+    idx_t size() const { return scenario == 6 ? 101 : scenario == 7 ? 100 : 1; }
     idx_t ColumnCount() const { return 1; }
     Value GetValue(idx_t, idx_t) const { return Value("42"); }
 };
@@ -283,7 +286,6 @@ struct Result {
     bool HasError() const { return scenario == 4; }
     std::string GetError() const { return "failure"; }
     std::vector<std::string> GetNames() const { return {"answer"}; }
-    idx_t RowCount() const { return 1; }
     std::unique_ptr<Chunk> Fetch() {
         if (fetched) return nullptr;
         fetched = true;
@@ -328,6 +330,16 @@ int main() {
         if (scenario == 0) {
             assert(!strcmp(output, "{\"columns\":[\"answer\"],\"rows\":[[\"42\"]],\"truncated\":false}"));
         }
+    }
+    for (scenario = 6; scenario <= 7; ++scenario) {
+        options = 0;
+        char large[4096];
+        assert(duckdb_remote_query("test.db", "SELECT 42", large, sizeof(large)) == 200);
+        const char* expected = scenario == 6 ? "\"truncated\":true" : "\"truncated\":false";
+        assert(strstr(large, expected));
+        size_t rows = 0;
+        for (const char* at = large; (at = strstr(at, "[\"42\"]")); at++) rows++;
+        assert(rows == 100);
     }
 }
 ''')

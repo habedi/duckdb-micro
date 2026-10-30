@@ -95,7 +95,7 @@ class FlashStackTests(unittest.TestCase):
             binary = Path(directory) / "flash"
             harness.write_text(STUBS + source + CHECKS)
             command = shlex.split(os.environ.get("CC", "cc"))
-            command += ["-std=c11", "-Wall", "-Wextra", "-Werror", str(harness), "-o", str(binary)]
+            command += ["-std=c17", "-Wall", "-Wextra", "-Werror", str(harness), "-o", str(binary)]
             subprocess.run(command, check=True)
             subprocess.run([str(binary)], check=True)
 

@@ -174,7 +174,7 @@ class WifiTests(unittest.TestCase):
         command = shlex.split(os.environ.get("CC", "cc"))
         for name in ("CFLAGS", "SANFLAGS"):
             command += shlex.split(os.environ.get(name, ""))
-        command += [str(harness), "-o", str(cls.binary)]
+        command += ["-std=c17", str(harness), "-o", str(cls.binary)]
         command += shlex.split(os.environ.get("LDFLAGS", ""))
         subprocess.run(command, check=True)
 

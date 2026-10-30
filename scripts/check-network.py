@@ -93,7 +93,7 @@ def run(port, capture, fixture):
                 output = command(f"fetch_csv {base}{endpoint} {fixture}.failed")
                 if b"download failed" not in output:
                     raise RuntimeError(f"Expected download rejection: {output!r}")
-                output = command(f"ls {fixture}.failed")
+                output = command(f"cat {fixture}.failed")
                 if b"No such file" not in output:
                     raise RuntimeError("Failed download left a file")
             output = command(f"fetch_csv {base}/csv {fixture}.csv")
@@ -111,7 +111,7 @@ def run(port, capture, fixture):
     output = command(f"fetch_csv https://expired.badssl.com/ {fixture}.expired", timeout=30)
     if b"download failed" not in output or b"Downloaded " in output:
         raise RuntimeError("Expired HTTPS certificate was accepted")
-    output = command(f"ls {fixture}.expired")
+    output = command(f"cat {fixture}.expired")
     if b"No such file" not in output:
         raise RuntimeError("Rejected HTTPS download left a file")
     command(f'duckdb {fixture}.duckdb -c "CREATE TABLE samples AS '

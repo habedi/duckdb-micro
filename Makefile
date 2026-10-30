@@ -123,12 +123,11 @@ probe-test: ## Test the Unicode and math portability fixes on the host
 
 shell-test: ## Run shell path, editor, completion, filesystem, and Wi-Fi helper host tests
 	mkdir -p build/test
-	$(CC) -std=c11 -Wall -Wextra -Isrc/firmware/shell/main \
+	$(CC) -std=c17 -Wall -Wextra -Isrc/firmware/shell/main \
 		src/firmware/shell/test/test_path_util.c src/firmware/shell/main/path_util.c \
 		-o build/test/test_path_util
 	build/test/test_path_util
-	$(CC) -std=c11 -Wall -Wextra src/firmware/shell/test/test_editor.c \
-		-o build/test/test_editor
+	$(CC) -std=c17 -Wall -Wextra src/firmware/shell/test/test_editor.c -o build/test/test_editor
 	build/test/test_editor
 	$(PYTHON) -m unittest discover -s src/firmware/shell/test -p test_autocomplete.py
 	$(PYTHON) -m unittest discover -s src/firmware/shell/test -p test_filesystem.py
