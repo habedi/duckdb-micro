@@ -166,6 +166,7 @@ def run_queries(port, capture, report, manifest, args):
             continue
         for iteration in range(args.repeats + 1):
             command("duckdb", b"duckdb> ")
+            command(f"SET threads={args.threads};")
             command(f"SET memory_limit='{args.memory_limit_mb}MB';")
             command(f"ATTACH '{args.database}' AS tpch (READ_ONLY);")
             command("USE tpch;")
@@ -211,6 +212,7 @@ def run(args):
     features.log.with_suffix(".json").write_text(json.dumps(dict(
         manifest=manifest, database=args.database, generated_database=generated,
         repeats=args.repeats, queries=args.queries, memory_limit_mb=args.memory_limit_mb,
+        threads=args.threads,
         timeout=args.timeout), indent=2) + "\n")
     print(f"Serial log: {features.log}\nReport: {report_path}", flush=True)
     with serial.Serial(port=None, baudrate=115200, timeout=0.2, exclusive=True) as port, \
@@ -250,6 +252,8 @@ def arguments(argv=None):
     hardware.add_argument("--scale", type=float, choices=(0.001, 0.01))
     hardware.add_argument("--memory-limit-mb", type=int, choices=(8, 12), default=8,
                           help="query buffer limit in MB; firmware default stays unchanged")
+    hardware.add_argument("--threads", type=int, choices=(1, 2), default=1,
+                          help="query threads (default: 1; 2 enables the CPU 1 worker)")
     hardware.add_argument("--queries", type=int, nargs="+", choices=QUERIES,
                           default=DEFAULT_QUERIES, help="query numbers (default: 1 6 12)")
     hardware.add_argument("--database",

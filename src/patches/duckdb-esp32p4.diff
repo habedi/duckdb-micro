@@ -1236,4 +1236,4 @@ diff --git a/src/parallel/task_scheduler_pool.cpp b/src/parallel/task_scheduler_
 +#endif
  			}
  			auto thread_wrapper = make_uniq<TaskSchedulerThread>(std::move(worker_thread));
- 
+
