@@ -9,6 +9,8 @@
 extern "C" bool shell_resolve_arg(const char* cmd, const char* in, char* out, size_t out_len);
 
 extern "C" size_t shell_command_line_limit(void);
+extern "C" bool esp_cli_sql_complete(const char* input, linenoiseCompletions* completions,
+                                     size_t limit);
 
 namespace {
 void cli_complete(const char* input, linenoiseCompletions* completions) {
@@ -24,6 +26,7 @@ void cli_complete(const char* input, linenoiseCompletions* completions) {
             }
             return;
         }
+        if (esp_cli_sql_complete(input, completions, limit)) return;
         const auto end = line.size();
         auto start = end;
         while (start && (std::isalnum(static_cast<unsigned char>(line[start - 1])) ||

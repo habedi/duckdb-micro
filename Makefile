@@ -13,7 +13,7 @@ TPCH_MANIFEST ?= build/tpch/manifest.json
 
 export CFLAGS CXXFLAGS SANFLAGS LDFLAGS TEST_RUNNER
 
-FORMAT_FILES := $(wildcard src/firmware/main/*.cpp src/firmware/shell/main/*.cpp src/firmware/shell/main/duckdb_console.h test/*.cpp)
+FORMAT_FILES := $(wildcard src/firmware/main/*.cpp src/firmware/shell/main/*.cpp src/firmware/shell/cli/*.cpp src/firmware/shell/main/duckdb_console.h test/*.cpp)
 
 .PHONY: help clean clean-all submodules probe-build shell-build firmware-package shell-flash flash probe-flash console \
  check-shell check-cli check-probe check-stress check-network check-dualcore prepare-tpch check-tpch espidf-install test probe-test shell-test \

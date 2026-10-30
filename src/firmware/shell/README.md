@@ -121,7 +121,7 @@ Useful commands include `.tables`, `.schema`, `.indexes`, `.databases`, `.manual
 `.last`, `.timer`, `.changes`, `.separator`, `.nullvalue`, `.open`, `.import`,
 `.read`, `.output`, and `.once`. File paths use MicroShell's current directory.
 CSV imports default to a 64 KiB input buffer. Up/Down navigate history; Tab completes
-keywords and dot commands, with at most 16 suggestions.
+keywords, tables, columns, files, and dot commands, with at most 16 suggestions.
 
 The CLI uses a 96 KiB PSRAM task stack, an 8 MB buffer limit, and no temporary spilling.
 SQL input is limited to 16 KiB across lines, and `.read` allows four nested files.

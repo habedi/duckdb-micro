@@ -27,6 +27,82 @@ class CliTests(unittest.TestCase):
             subprocess.run(command, check=True)
             subprocess.run([*RUNNER, str(binary), *arguments], check=True)
 
+    def test_catalog_completion_is_bounded_and_preserves_the_last_result(self):
+        source = (ROOT / "src/firmware/shell/cli/complete.cpp").read_text()
+        code = source[source.index('extern "C" bool esp_cli_sql_complete'):]
+        stubs = r'''
+#include <cassert>
+#include <memory>
+#include <string>
+#include <vector>
+#include <stdexcept>
+#include <type_traits>
+#include <cstdint>
+static int scenario;
+struct linenoiseCompletions { size_t len = 0; std::vector<std::string> values; };
+void linenoiseAddCompletion(linenoiseCompletions* out, const char* text) {
+    ++out->len; out->values.emplace_back(text);
+}
+namespace duckdb {
+using string = std::string;
+template<class T> using unique_ptr = std::unique_ptr<T>;
+struct Value { string text; explicit Value(string s): text(std::move(s)) {} };
+struct Row {
+    string text;
+    int64_t start;
+    template<class T> T GetValue(int) {
+        if constexpr (std::is_same<T, string>::value) return text;
+        else return start;
+    }
+};
+struct QueryResult {
+    std::vector<Row> rows;
+    bool HasError() { return scenario == 1; }
+    auto begin() { return rows.begin(); }
+    auto end() { return rows.end(); }
+};
+struct Connection { unique_ptr<QueryResult> Query(const char*, Value); };
+}
+namespace duckdb_shell {
+struct ShellState {
+    duckdb::unique_ptr<duckdb::QueryResult> last_result;
+    bool last_result_referenced = true;
+    duckdb::unique_ptr<duckdb::Connection> conn = std::make_unique<duckdb::Connection>();
+    static ShellState& Get() { static ShellState state; return state; }
+};
+}
+duckdb::unique_ptr<duckdb::QueryResult> duckdb::Connection::Query(const char* sql, Value input) {
+    assert(string(sql).find("$1") != string::npos);
+    assert(input.text == "SELECT * FROM cli_d");
+    auto& state = duckdb_shell::ShellState::Get();
+    state.last_result.reset();
+    state.last_result_referenced = false;
+    if (scenario == 2) throw std::runtime_error("injected");
+    auto result = std::make_unique<QueryResult>();
+    result->rows = {{"bad", -1}, {"bad", 9999}, {string(1024, 'x'), 14}};
+    for (int i = 0; i < 32; ++i) result->rows.push_back({"cli_data", 14});
+    return result;
+}
+'''
+        checks = r'''
+int main() {
+    auto& state = duckdb_shell::ShellState::Get();
+    for (scenario = 0; scenario < 3; ++scenario) {
+        state.last_result = std::make_unique<duckdb::QueryResult>();
+        state.last_result_referenced = true;
+        auto saved = state.last_result.get();
+        linenoiseCompletions out;
+        assert(esp_cli_sql_complete("SELECT * FROM cli_d", &out, 1024) == (scenario == 0));
+        assert(state.last_result.get() == saved && state.last_result_referenced);
+        if (scenario == 0) {
+            assert(out.len == 16);
+            for (auto& text : out.values) assert(text == "SELECT * FROM cli_data");
+        } else assert(out.len == 0);
+    }
+}
+'''
+        self.compile_run(stubs + code + checks)
+
     def test_thread_ids_work_for_unregistered_freertos_tasks(self):
         source = (ROOT / "external/duckdb/src/common/thread_util.cpp").read_text()
         code = source[source.index("thread_id ThreadUtil::GetThreadId()"):
@@ -128,6 +204,7 @@ void linenoiseAddCompletion(linenoiseCompletions* out, const char* text) {
     out->values.emplace_back(text); ++out->len;
 }
 size_t shell_command_line_limit() { return 1024; }
+bool esp_cli_sql_complete(const char*, linenoiseCompletions*, size_t) { return false; }
 namespace duckdb {
 struct StringUtil {
     static std::string Lower(std::string text) {
