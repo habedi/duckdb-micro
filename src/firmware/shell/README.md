@@ -82,6 +82,11 @@ Features and behavior of the console:
 
 - Persistent databases: Run `duckdb /sdcard/database.db` to open or create an on-disk database.
 - One-shot execution: Run `duckdb -c "SELECT 42;"` to execute SQL and return to `msh>`.
+- SQL input: Enter submits one complete statement on the current line. The final semicolon is optional.
+  Multiple statements on one line are rejected before execution. Multiline SQL is unsupported.
+- Results: Read-only SELECT results stream as they are displayed. Stopping output cancels the remaining
+  SELECT work; `25+ row(s)` means the full row count is unknown. Writes finish even when output stops.
+  Control characters in column names and values are escaped, including `\0`, `\n`, and `\t`.
 - Dot-commands: Use `.tables` to inspect tables, `.help` for examples, and `.quit` or `.exit` to return to `msh>`.
 - Extensions: Core functions, Parquet reader and writer (`read_parquet`), and JSON (`read_json_auto`).
 - Resource limits: One query thread by default, an 8 MB buffer memory limit, and spilling disabled.

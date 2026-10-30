@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
+#include <string_view>
 
 #include "duckdb.hpp"
 #include "duckdb/main/query_result_stream.hpp"
@@ -52,40 +53,92 @@ bool next_page() {
     return key == ' ';
 }
 
+void print_sql_text(std::string_view text) {
+    for (unsigned char c : text) {
+        switch (c) {
+            case '\\':
+                printf("\\\\");
+                break;
+            case '\0':
+                printf("\\0");
+                break;
+            case '\n':
+                printf("\\n");
+                break;
+            case '\r':
+                printf("\\r");
+                break;
+            case '\t':
+                printf("\\t");
+                break;
+            default:
+                if (c < 32 || c == 127)
+                    printf("\\x%02x", c);
+                else
+                    putchar(c);
+        }
+    }
+}
+
 bool query(duckdb::Connection& connection, const char* sql, bool interactive) {
     const auto start = esp_timer_get_time();
-    auto result = connection.Query(sql);
-    if (result->HasError()) {
-        printf("SQL error: %s\n", result->GetError().c_str());
+    auto statements = connection.ExtractStatements(sql);
+    if (statements.size() != 1) {
+        printf("SQL error: Exactly one SQL statement is required.\n");
         return false;
     }
-    const auto elapsed = esp_timer_get_time() - start;
-    for (const auto& name : result->GetNames()) {
-        printf("%s\t", name.c_str());
+    auto written_type = statements[0]->type;
+    auto pending = connection.Submit(std::move(statements[0]));
+    if (pending->HasError()) {
+        printf("SQL error: %s\n", pending->GetError().c_str());
+        return false;
+    }
+    // Only read-only SELECTs may stop early; writes must drain to completion to commit.
+    const bool can_stop = duckdb::StreamsByDefault(written_type, *pending, false);
+    duckdb::QueryResultStream<> result(std::move(pending));
+    auto chunk = result.Fetch();
+    auto elapsed = esp_timer_get_time() - start;
+    if (result.HasError()) {
+        printf("SQL error: %s\n", result.GetError().c_str());
+        return false;
+    }
+    for (const auto& name : result.GetNames()) {
+        print_sql_text(name.c_str());
+        printf("\t");
     }
     printf("\n");
-    duckdb::idx_t shown = 0;
-    duckdb::idx_t limit = interactive ? result->RowCount() : 100;
-    while (shown < limit) {
-        auto chunk = result->Fetch();
-        if (!chunk || chunk->size() == 0) {
-            break;
-        }
-        for (duckdb::idx_t row = 0; row < chunk->size() && shown < limit; ++row, ++shown) {
-            if (interactive && shown != 0 && shown % 25 == 0 && !next_page()) {
-                limit = shown;
-                break;
+    duckdb::idx_t shown = 0, total = 0;
+    bool stopped = false;
+    while (chunk && chunk->size() != 0) {
+        for (duckdb::idx_t row = 0; row < chunk->size(); ++row, ++total) {
+            if (!stopped && ((!interactive && shown == 100) ||
+                             (interactive && shown != 0 && shown % 25 == 0 && !next_page()))) {
+                stopped = true;
+            }
+            if (stopped) {
+                if (can_stop) break;
+                continue;
             }
             for (duckdb::idx_t col = 0; col < chunk->ColumnCount(); ++col) {
                 const auto value = chunk->GetValue(col, row);
-                printf("%s\t", value.IsNull() ? "NULL" : value.ToString().c_str());
+                print_sql_text(value.IsNull() ? "NULL" : value.ToString());
+                printf("\t");
             }
             printf("\n");
+            ++shown;
         }
+        if (stopped && can_stop) break;
+        const auto fetch_start = esp_timer_get_time();
+        chunk = result.Fetch();
+        elapsed += esp_timer_get_time() - fetch_start;
     }
-    printf("%llu row(s), %lld ms", (unsigned long long)result->RowCount(),
+    if (result.HasError()) {
+        printf("SQL error: %s\n", result.GetError().c_str());
+        return false;
+    }
+    printf("%llu%s row(s), %lld ms", (unsigned long long)total, stopped && can_stop ? "+" : "",
            (long long)(elapsed / 1000));
-    if (result->RowCount() > shown) {
+    if (stopped) {
         printf(" (first %llu shown)", (unsigned long long)shown);
     }
     printf("\n");

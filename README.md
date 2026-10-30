@@ -6,6 +6,9 @@
 
 ---
 
+> [!WARNING]
+> **This project is very experimental.**
+
 DuckDB Micro is an experimental (and partial) port of DuckDB 2.0 to ESP32-P4 (more specifically,
 the [Waveshare ESP32-P4-WIFI6](https://www.waveshare.com/wiki/ESP32-P4-WIFI6) board; see image below).
 
@@ -21,23 +24,20 @@ lacks a lot of conventional features like a lot of (fast) memory, a full-feature
 
 ### Feature Comparisons
 
-| Feature           | DuckDB                                    | DuckDB Micro                                              |
-|-------------------|-------------------------------------------|-----------------------------------------------------------|
-| Platform          | Desktop and server (Linux/Windows/macOS)  | ESP32-P4 (FreeRTOS)                                       |
-| Architecture      | 64-bit                                    | 32-bit (RISC-V)                                           |
-| Query parallelism | Multi-core                                | Single thread (up to 2)                                   |
-| Buffer memory     | Host RAM (configurable)                   | 8 MB (PSRAM)                                              |
-| Storage           | In-memory and persistent                  | In-memory, microSD (FATFS), and internal flash (LittleFS) |
-| Disk spilling     | Supported                                 | Disabled                                                  |
-| Data formats      | CSV, JSON, Parquet, and more              | CSV, JSON, and Parquet                                    |
-| Extensions        | Supported                                 | Core functions, JSON, and Parquet only                    |
-| Remote files      | Direct over HTTP(S) access (via `httpfs`) | Download to local storage first                           |
-| User interface    | CLI and language APIs                     | MicroShell and optional REST API                          |
+| Feature           | DuckDB                                         | DuckDB Micro                                              |
+|-------------------|------------------------------------------------|-----------------------------------------------------------|
+| Platform          | Desktop and server (Linux, Windows, and macOS) | ESP32-P4 (FreeRTOS)                                       |
+| Architecture      | 64-bit (x86_64 and AArch64)                    | 32-bit (RISC-V)                                           |
+| Query parallelism | Multi-core                                     | Single thread (up to 2)                                   |
+| Buffer memory     | Host RAM (configurable)                        | 8 MB (PSRAM)                                              |
+| Storage           | In-memory and persistent                       | In-memory, microSD (FATFS), and internal flash (LittleFS) |
+| Disk spilling     | Supported                                      | Disabled                                                  |
+| Data formats      | CSV, JSON, Parquet, and more                   | CSV, JSON, and Parquet                                    |
+| Extensions        | Supported                                      | Core functions, JSON, and Parquet only                    |
+| Remote files      | Direct over HTTP(S) access (via `httpfs`)      | Download to local storage first                           |
+| User interface    | CLI and language APIs                          | MicroShell and optional REST API                          |
 
 See [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
-
-> [!WARNING]
-> **This project is very experimental.**
 
 **You can download the latest pre-built firmware from the [releases page](https://github.com/habedi/duckdb-micro/releases).**
 
