@@ -145,7 +145,7 @@ share a busy guard, so they cannot open separate SQL engines at the same time. B
 invalid queries return HTTP 400, and missing or incorrect tokens return HTTP 401.
 Requests are limited to 4 KiB, responses to 64 KiB, and returned rows to 100. Larger responses fail rather than
 returning incomplete JSON. Queries use one thread, an 8 MB buffer limit, and no spilling. The HTTP task uses a
-64 KiB PSRAM stack. There is no query deadline, so expensive queries can keep the server busy until they finish.
+60 KiB PSRAM stack. There is no query deadline, so expensive queries can keep the server busy until they finish.
 
 Stop the server with `query_server stop`. Starting it again creates a new token.
 The server uses unencrypted HTTP. Tokens and query results are visible to network observers; use only a trusted

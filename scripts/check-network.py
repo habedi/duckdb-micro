@@ -152,6 +152,12 @@ def run(port, capture, fixture):
         result = rest(address, token, "SELECT NULL AS missing, 'a' || chr(10) || chr(34) AS escaped")
         if result["rows"] != [[None, 'a\n"']]:
             raise RuntimeError(f"Incorrect JSON escaping: {result}")
+        result = rest(address, token, "SELECT 'a' || chr(0) || 'b'")
+        if result["rows"] != [["a\0b"]]:
+            raise RuntimeError("Embedded NUL was not preserved in JSON")
+        result = rest(address, token, "SELECT 1 WHERE false")
+        if result["rows"] or result["truncated"]:
+            raise RuntimeError("Empty result was not represented correctly")
         result = rest(address, token, "SELECT * FROM range(101)")
         if len(result["rows"]) != 100 or not result["truncated"]:
             raise RuntimeError("Missing row truncation")

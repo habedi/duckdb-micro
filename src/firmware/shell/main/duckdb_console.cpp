@@ -293,7 +293,7 @@ extern "C" int duckdb_remote_query(const char* path, const char* sql, char* outp
                     if (value.IsNull())
                         json.append("null");
                     else
-                        json.string(value.ToString().c_str());
+                        json.string(value.ToString());
                 }
                 json.append("]");
             }

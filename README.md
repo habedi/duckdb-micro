@@ -9,6 +9,21 @@
 DuckDB Micro is an experimental (and partial) port of DuckDB 2.0 to ESP32-P4 (more specifically,
 the [Waveshare ESP32-P4-WIFI6](https://www.waveshare.com/wiki/ESP32-P4-WIFI6) board; see image below).
 
+| Feature                 | Vanilla DuckDB 2.0                    | DuckDB Micro                                     |
+|-------------------------|---------------------------------------|--------------------------------------------------|
+| Platform                | Desktop and server operating systems  | ESP32-P4 with FreeRTOS                           |
+| Query Parallelism       | Multiple CPU cores                    | One thread by default; optional CPU 1 worker     |
+| Buffer Memory           | Configurable for host RAM             | 8 MB by default, using PSRAM                     |
+| Temporary Disk Spilling | Supported                             | Disabled                                         |
+| Local Data Formats      | CSV, JSON, Parquet, and extensions    | CSV, JSON, and Parquet                           |
+| Extensions              | Installable and loadable              | Bundled core functions, JSON, and Parquet only   |
+| Remote Files            | Direct HTTP(S) scans through `httpfs` | HTTP(S) downloads to local storage               |
+| User Interface          | SQL CLI and language APIs             | MicroShell and an opt-in read-only REST endpoint |
+
+See the upstream [configuration](https://duckdb.org/docs/2.0/configuration/overview) and
+[`httpfs` documentation](https://duckdb.org/docs/2.0/core_extensions/httpfs/overview), and the
+[MicroShell guide](src/firmware/shell/README.md) for details and limits.
+
 <div align="center">
   <img alt="MicroShell" src="docs/assets/images/esp32-p4-wifi6.png" width="40%">
 </div>

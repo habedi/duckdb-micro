@@ -68,6 +68,30 @@ class NetworkTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Hugging Face HTTPS download failed"):
                 module.download_graph(Mock(return_value=output), "/sdcard/test")
 
+    def test_http_server_stack_fits_sdk_sixteen_bit_wrapper(self):
+        source = SOURCE.read_text()
+        start = source.index("    httpd_config_t config = HTTPD_DEFAULT_CONFIG();")
+        end = source.index("    esp_err_t error = httpd_start(", start)
+        self.compile_run(r'''
+#include <cassert>
+#include <cstdint>
+#include <cstddef>
+constexpr int MALLOC_CAP_SPIRAM = 1, MALLOC_CAP_8BIT = 2;
+struct httpd_config_t {
+    int server_port, task_caps, core_id, max_open_sockets, max_uri_handlers;
+    int recv_wait_timeout, send_wait_timeout;
+    size_t stack_size;
+};
+#define HTTPD_DEFAULT_CONFIG() httpd_config_t{}
+int main() {
+''' + source[start:end] + r'''
+    uint16_t sdk_stack = config.stack_size;
+    assert(sdk_stack == config.stack_size && sdk_stack >= 48 * 1024);
+    assert(config.task_caps == (MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    assert(config.core_id == 0 && config.server_port == 8080);
+}
+''')
+
     def test_json_escaping_and_capacity(self):
         self.compile_run(r'''
 #include "network_json.h"
@@ -77,6 +101,10 @@ int main() {
     NetworkJson json(buffer, sizeof(buffer));
     json.string("a\"\\\n\t\x01");
     assert(strcmp(buffer, "\"a\\u0022\\u005c\\u000a\\u0009\\u0001\"") == 0);
+    char nul[16];
+    NetworkJson embedded(nul, sizeof(nul));
+    embedded.string(std::string_view("a\0b", 3));
+    assert(strcmp(nul, "\"a\\u0000b\"") == 0);
     char small[5] = {};
     NetworkJson bounded(small, sizeof(small));
     bounded.append("1234");

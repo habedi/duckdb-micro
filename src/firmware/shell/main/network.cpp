@@ -194,7 +194,8 @@ int server_command(int argc, char** argv) {
     }
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 8080;
-    config.stack_size = 65536;
+    // ESP-IDF's HTTP task wrapper narrows the stack size to uint16_t.
+    config.stack_size = 60 * 1024;
     config.task_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
     config.core_id = 0;
     config.max_open_sockets = 2;

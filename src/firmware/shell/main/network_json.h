@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
+#include <string_view>
 
 class NetworkJson {
    public:
@@ -13,14 +14,14 @@ class NetworkJson {
         memcpy(data + used, text, count + 1);
         used += count;
     }
-    void string(const char* text) {
+    void string(std::string_view text) {
         append("\"");
-        for (const unsigned char* p = reinterpret_cast<const unsigned char*>(text); *p; ++p) {
+        for (unsigned char c : text) {
             char escaped[7];
-            if (*p < 32 || *p == '"' || *p == '\\') {
-                snprintf(escaped, sizeof(escaped), "\\u%04x", *p);
+            if (c < 32 || c == '"' || c == '\\') {
+                snprintf(escaped, sizeof(escaped), "\\u%04x", c);
             } else {
-                escaped[0] = *p;
+                escaped[0] = c;
                 escaped[1] = 0;
             }
             append(escaped);
