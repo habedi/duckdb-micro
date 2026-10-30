@@ -147,6 +147,7 @@ def main():
                 stress.check_memory(baseline, sample, streaks, 5)
             print(f"Session {session + 1}: correct results, reopen, and cleanup; "
                   f"internal free={sample['Internal SRAM']['free']}", flush=True)
+        command('duckdb -c "SELECT count(*) FROM duckdb_tables;"', b"\n0\t", prompt=b"msh> ")
         for suffix in (".csv", ".sql", ".loop.sql", ".large.sql", ".out", ".duckdb"):
             command("rm " + prefix + suffix, prompt=b"msh> ")
     print("PASS: upstream CLI modes, multiline SQL, file commands, and repeated sessions")
