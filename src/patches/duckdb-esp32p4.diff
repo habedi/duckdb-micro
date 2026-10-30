@@ -523,7 +523,7 @@ index 62a7b2b8f5d..fdfb0bcab6b 100644
 
  optional_idx FileSystem::GetAvailableDiskSpace(const string &path) {
 diff --git a/src/common/local_file_system.cpp b/src/common/local_file_system.cpp
-index 664659e76aa..add337f4678 100644
+index 664659e76aa..8bfeef03476 100644
 --- a/src/common/local_file_system.cpp
 +++ b/src/common/local_file_system.cpp
 @@ -30,7 +30,9 @@
@@ -568,43 +568,15 @@ index 664659e76aa..add337f4678 100644
  }
 
  unique_ptr<FileHandle> LocalFileSystem::OpenFile(const string &path_p, FileOpenFlags flags,
-@@ -422,6 +432,35 @@ unique_ptr<FileHandle> LocalFileSystem::OpenFile(const string &path_p, FileOpenF
+@@ -422,6 +432,7 @@ unique_ptr<FileHandle> LocalFileSystem::OpenFile(const string &path_p, FileOpenF
  		open_flags |= O_EXCL;
  	}
 
-+#ifdef ESP_PLATFORM
-+	// ESP-IDF 6.1 VFS expects picolibc fcntl flag values:
-+	// O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2
-+	// O_CREAT = 0x0040, O_TRUNC = 0x0200, O_APPEND = 0x0400, O_EXCL = 0x0800
-+	int vfs_open_flags = 0;
-+	if (open_read && open_write) {
-+		vfs_open_flags = 2; // O_RDWR
-+	} else if (open_read) {
-+		vfs_open_flags = 0; // O_RDONLY
-+	} else if (open_write) {
-+		vfs_open_flags = 1; // O_WRONLY
-+	}
-+	if (open_write) {
-+		if (flags.CreateFileIfNotExists() || flags.OverwriteExistingFile()) {
-+			vfs_open_flags |= 0x0040; // O_CREAT
-+		}
-+		if (flags.OverwriteExistingFile() && !flags.OpenForAppending()) {
-+			vfs_open_flags |= 0x0200; // O_TRUNC
-+		}
-+		if (flags.OpenForAppending()) {
-+			vfs_open_flags |= 0x0400; // O_APPEND
-+		}
-+	}
-+	if (flags.ExclusiveCreate() || flags.CreatePrivateFile()) {
-+		vfs_open_flags |= 0x0800; // O_EXCL
-+	}
-+	open_flags = vfs_open_flags;
-+#endif
 +
  	// Open the file
  	ApplyLocalFileSystemDelay(opener);
  	int fd = open(path.c_str(), open_flags, filesec);
-@@ -830,7 +869,8 @@ void LocalFileSystem::FileSync(FileHandle &handle) {
+@@ -830,7 +841,8 @@ void LocalFileSystem::FileSync(FileHandle &handle) {
  	}
  #endif // F_FULLFSYNC
 
@@ -614,7 +586,7 @@ index 664659e76aa..add337f4678 100644
  	bool sync_success = ::fdatasync(fd) == 0;
  #else
  	bool sync_success = ::fsync(fd) == 0;
-@@ -854,10 +894,21 @@ void LocalFileSystem::MoveFile(const string &source, const string &target, optio
+@@ -854,10 +866,21 @@ void LocalFileSystem::MoveFile(const string &source, const string &target, optio
  	auto normalized_source = ExpandPath(source, opener);
  	auto normalized_target = ExpandPath(target, opener);
  	//! FIXME: rename does not guarantee atomicity or overwriting target file if it exists
@@ -636,7 +608,7 @@ index 664659e76aa..add337f4678 100644
  }
 
  std::string LocalFileSystem::GetLastErrorAsString() {
-@@ -889,6 +940,12 @@ string LocalFileSystem::MakePathAbsolute(const string &path_p, optional_ptr<File
+@@ -889,6 +912,12 @@ string LocalFileSystem::MakePathAbsolute(const string &path_p, optional_ptr<File
  //===----------------------------------------------------------------------===//
  // Memory-mapped files (Unix)
  //===----------------------------------------------------------------------===//
@@ -649,7 +621,7 @@ index 664659e76aa..add337f4678 100644
  class UnixMemoryMappedFile : public MemoryMappedFile {
  public:
  	UnixMemoryMappedFile(string path_p, FileOpenFlags flags_p, int fd_p, data_ptr_t data_p, idx_t size_p);
-@@ -1021,6 +1078,7 @@ unique_ptr<MemoryMappedFile> LocalFileSystem::MemoryMapFile(const OpenFileInfo &
+@@ -1021,6 +1050,7 @@ unique_ptr<MemoryMappedFile> LocalFileSystem::MemoryMapFile(const OpenFileInfo &
 
  	return make_uniq<UnixMemoryMappedFile>(path, flags, fd, data, mapping_size);
  }
@@ -657,7 +629,7 @@ index 664659e76aa..add337f4678 100644
 
  #else
 
-@@ -2101,7 +2159,10 @@ static bool IsCrawl(const string &glob) {
+@@ -2101,7 +2131,10 @@ static bool IsCrawl(const string &glob) {
  }
 
  static bool IsSymbolicLink(const string &path) {
@@ -719,6 +691,42 @@ index 61e3965e4fc..4cc6292e5d4 100644
  	} else if (week >= 52 && date >= GetISOWeekOne(year + 1)) {
  		++year;
  		week = 0;
+diff --git a/src/common/types/row/tuple_data_allocator.cpp b/src/common/types/row/tuple_data_allocator.cpp
+index fb1ead6960c..78a32b4e79f 100644
+--- a/src/common/types/row/tuple_data_allocator.cpp
++++ b/src/common/types/row/tuple_data_allocator.cpp
+@@ -191,7 +191,8 @@ void TupleDataAllocator::Build(TupleDataSegment &segment, TupleDataPinState &pin
+ 		idx_t offset = 0;
+ 		while (offset != append_count) {
+ 			if (chunks.empty() || chunks.back()->count == STANDARD_VECTOR_SIZE) {
+-				chunks.push_back(stl_allocator->MakeUnsafePtr<TupleDataChunk>(*stl_allocator->Make<mutex>()));
++				auto chunk_lock = stl_allocator->MakePtr<mutex>();
++				chunks.push_back(stl_allocator->MakeUnsafePtr<TupleDataChunk>(std::move(chunk_lock)));
+ 			}
+ 			auto &chunk = *chunks.back();
+
+diff --git a/src/common/types/row/tuple_data_segment.cpp b/src/common/types/row/tuple_data_segment.cpp
+index f1d77a6b1b1..e047d3a5847 100644
+--- a/src/common/types/row/tuple_data_segment.cpp
++++ b/src/common/types/row/tuple_data_segment.cpp
+@@ -18,12 +18,17 @@ void TupleDataChunkPart::SetHeapEmpty() {
+ TupleDataChunk::TupleDataChunk(mutex &lock_p) : count(0), lock(lock_p) {
+ }
+
++TupleDataChunk::TupleDataChunk(arena_ptr<mutex> lock_p) : TupleDataChunk(*lock_p) {
++	owned_lock = std::move(lock_p);
++}
++
+ static inline void SwapTupleDataChunk(TupleDataChunk &a, TupleDataChunk &b) noexcept {
+ 	std::swap(a.part_ids, b.part_ids);
+ 	std::swap(a.row_block_ids, b.row_block_ids);
+ 	std::swap(a.heap_block_ids, b.heap_block_ids);
+ 	std::swap(a.count, b.count);
+ 	std::swap(a.lock, b.lock);
++	std::swap(a.owned_lock, b.owned_lock);
+ }
+
+ TupleDataChunk::TupleDataChunk(TupleDataChunk &&other) noexcept : count(0), lock(other.lock) {
 diff --git a/src/include/duckdb/common/hugeint.hpp b/src/include/duckdb/common/hugeint.hpp
 index 8441065069b..a24e585f408 100644
 --- a/src/include/duckdb/common/hugeint.hpp
@@ -839,6 +847,27 @@ index ccf773c5c73..b02811fe8d3 100644
  namespace duckdb {
  using std::thread;
  using thread_id = std::thread::id;
+diff --git a/src/include/duckdb/common/types/row/tuple_data_segment.hpp b/src/include/duckdb/common/types/row/tuple_data_segment.hpp
+index 199bafea38c..640c47e7bcb 100644
+--- a/src/include/duckdb/common/types/row/tuple_data_segment.hpp
++++ b/src/include/duckdb/common/types/row/tuple_data_segment.hpp
+@@ -115,6 +115,7 @@ private:
+ struct TupleDataChunk {
+ public:
+ 	explicit TupleDataChunk(mutex &lock_p);
++	explicit TupleDataChunk(arena_ptr<mutex> lock_p);
+
+ 	//! Disable copy constructors
+ 	TupleDataChunk(const TupleDataChunk &other) = delete;
+@@ -143,6 +144,8 @@ public:
+ 	idx_t count;
+ 	//! Lock for recomputing heap pointers
+ 	reference<mutex> lock;
++	//! Releases platform mutex resources before the arena storage is reclaimed.
++	arena_ptr<mutex> owned_lock;
+ };
+
+ struct TupleDataSegment {
 diff --git a/src/include/duckdb/common/types/value.hpp b/src/include/duckdb/common/types/value.hpp
 index 7dcfca9377d..64bd32c0f57 100644
 --- a/src/include/duckdb/common/types/value.hpp

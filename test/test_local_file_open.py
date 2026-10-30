@@ -70,6 +70,57 @@ int main(int argc, char **argv) {
 
 
 class LocalFileOpenTests(unittest.TestCase):
+    def test_flags_match_newlib_instead_of_picolibc(self):
+        source = (ROOT / "external/duckdb/src/common/local_file_system.cpp").read_text()
+        start = source.index("\tint open_flags = 0;")
+        end = source.index("\n\t// Open the file", start)
+        flags = source[start:end]
+        harness_source = r'''
+#include <cassert>
+#include <stdexcept>
+#define D_ASSERT assert
+#define O_RDONLY 0
+#define O_WRONLY 1
+#define O_RDWR 2
+#define O_CREAT 0x0200
+#define O_APPEND 0x0008
+#define O_EXCL 0x0800
+#define O_CLOEXEC 0
+#define O_DIRECT 0
+using InternalException = std::runtime_error;
+struct OpenFlags {
+    bool read, write, create, append, exclusive;
+    bool OpenForReading() const { return read; }
+    bool OpenForWriting() const { return write; }
+    bool CreateFileIfNotExists() const { return create; }
+    bool OverwriteExistingFile() const { return false; }
+    bool OpenForAppending() const { return append; }
+    bool DirectIO() const { return false; }
+    bool CreatePrivateFile() const { return false; }
+    bool ExclusiveCreate() const { return exclusive; }
+};
+static int flags_for(OpenFlags flags) {
+// FLAGS
+    (void)filesec;
+    return open_flags;
+}
+int main() {
+    assert(flags_for({true, false, false, false, false}) == O_RDONLY);
+    assert(flags_for({true, true, true, false, false}) == (O_RDWR | O_CREAT));
+    assert(flags_for({false, true, true, true, false}) == (O_WRONLY | O_CREAT | O_APPEND));
+    assert(flags_for({false, true, true, false, true}) == (O_WRONLY | O_CREAT | O_EXCL));
+}
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            harness = Path(directory) / "flags.cpp"
+            binary = Path(directory) / "flags"
+            harness.write_text(harness_source.replace("// FLAGS", flags))
+            command = shlex.split(os.environ.get("CXX", "c++"))
+            command += ["-std=c++17", "-Wall", "-Wextra", "-Werror", "-DESP_PLATFORM",
+                        str(harness), "-o", str(binary)]
+            subprocess.run(command, check=True)
+            subprocess.run([str(binary)], check=True)
+
     @classmethod
     def setUpClass(cls):
         cls.directory = tempfile.TemporaryDirectory(prefix="duckdb-open-test-")
