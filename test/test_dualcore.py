@@ -40,6 +40,7 @@ class DualCoreTests(unittest.TestCase):
         header = ROOT / "external/duckdb/third_party/concurrentqueue/lightweightsemaphore.h"
         self.compile_and_run(r'''
 #define NDEBUG
+#include <cerrno>
 #define ESP_PLATFORM 1
 #define sem_init injected_sem_init
 ''' + f'#include "{header}"\n' + r'''
@@ -68,6 +69,11 @@ int main() {
                 else:
                     with self.assertRaisesRegex(RuntimeError, "Missing CPU 1"):
                         module.session(Mock(), io.BytesIO())
+        reports = iter([marker])
+        with patch.object(module.stress, "command",
+                          side_effect=lambda *args, **kwargs: next(reports, b"")):
+            with self.assertRaisesRegex(RuntimeError, "after worker restart"):
+                module.session(Mock(), io.BytesIO())
 
     def test_worker_uses_psram_stack_and_cpu_one_and_reports_configuration_failure(self):
         source = (ROOT / "src/firmware/shell/main/duckdb_console.cpp").read_text()

@@ -19,9 +19,11 @@ def session(port, capture):
         output.extend(stress.command(port, capture, line, prompt, expected, timeout=120))
 
     command("duckdb")
-    command("SELECT current_setting('threads'), current_setting('async_threads');", "2\t0")
-    sql = "SELECT sum(i), sum(i*i) FROM range(1000000) t(i);"
-    expected = "499999500000\t333332833333500000"
+    command("SELECT current_setting('threads'), current_setting('async_threads');", "1\t0")
+    command("SET threads=2;")
+    sql = ("SELECT sum(i), sum(i*i) FROM (SELECT i FROM range(1000000) t(i) "
+           "UNION ALL SELECT i FROM range(1000000) t(i)) t;")
+    expected = "999999000000\t666665666667000000"
     command(sql, expected)
     command("SET threads=1;")
     command("SELECT current_setting('threads');", "1")

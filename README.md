@@ -6,7 +6,7 @@
 
 ---
 
-DuckDB Micro is an experimental DuckDB 2.0 port to ESP32-P4 (more specifically,
+DuckDB Micro is an experimental (and partial) port of DuckDB 2.0 to ESP32-P4 (more specifically,
 the [Waveshare ESP32-P4-WIFI6](https://www.waveshare.com/wiki/ESP32-P4-WIFI6) board; see image below).
 
 <div align="center">
@@ -51,6 +51,8 @@ nix develop
 make espidf-install
 make shell-build # This may take a while
 ```
+
+MicroShell is the name of the shell environment that runs on the board after flashing it.
 
 #### 4. Flash the board
 

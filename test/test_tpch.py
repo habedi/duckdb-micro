@@ -102,7 +102,7 @@ class TpchTests(unittest.TestCase):
             args = argparse.Namespace(manifest=root / "fixture/manifest.json", scale=None,
                                       duckdb="host-duckdb", database=None, tty="fake",
                                       repeats=1, timeout=1, queries=tpch.DEFAULT_QUERIES,
-                                      memory_limit_mb=8)
+                                      memory_limit_mb=8, threads=1)
             manifest = dict(scale=0.001, database_sha256=hashlib.sha256(b"fixture").hexdigest(),
                             queries=[dict(number=q, sql="SELECT 42", rows=[["42"]])
                                      for q in tpch.QUERIES])
@@ -218,7 +218,7 @@ class TpchTests(unittest.TestCase):
 
         port.write.side_effect = respond
         args = argparse.Namespace(database="/sdcard/tpch.duckdb", repeats=2, timeout=1,
-                                  queries=tpch.DEFAULT_QUERIES, memory_limit_mb=12)
+                                  queries=tpch.DEFAULT_QUERIES, memory_limit_mb=12, threads=2)
         manifest = dict(queries=[dict(number=6, sql="SELECT 42", rows=[["42"]]),
                                  dict(number=3, sql="SELECT 99", rows=[["99"]]),
                                  dict(number=14, sql="SELECT 99", rows=[["99"]])])
@@ -232,6 +232,7 @@ class TpchTests(unittest.TestCase):
         commands = [call.args[0].decode().strip() for call in port.write.call_args_list]
         self.assertEqual(commands.count("SELECT 42;"), 3)
         self.assertEqual(commands.count("SET memory_limit='12MB';"), 3)
+        self.assertEqual(commands.count("SET threads=2;"), 3)
         self.assertEqual({row["minimum_free_bytes"] for row in rows}, {"250000", "20000000"})
         self.assertEqual(commands.count("ATTACH '/sdcard/tpch.duckdb' AS tpch (READ_ONLY);"), 3)
         self.assertEqual(commands.count(".quit"), 3)
@@ -246,7 +247,7 @@ class TpchTests(unittest.TestCase):
         port.read.return_value = b"\nSQL error: out of memory\r\nduckdb> "
         report = io.StringIO()
         args = argparse.Namespace(database="/sdcard/tpch.duckdb", repeats=1, timeout=1,
-                                  queries=tpch.DEFAULT_QUERIES, memory_limit_mb=8)
+                                  queries=tpch.DEFAULT_QUERIES, memory_limit_mb=8, threads=1)
         with self.assertRaisesRegex(RuntimeError, "Firmware fault"):
             tpch.run_queries(port, io.BytesIO(), report, dict(queries=[dict(number=1)]), args)
         self.assertEqual(len(report.getvalue().splitlines()), 1)
@@ -254,12 +255,13 @@ class TpchTests(unittest.TestCase):
     def test_arguments_reject_unsafe_paths_and_invalid_limits(self):
         self.assertEqual(tpch.arguments(["run", "tty"]).queries, tpch.DEFAULT_QUERIES)
         self.assertEqual(tpch.arguments(["run", "tty"]).memory_limit_mb, 8)
+        self.assertEqual(tpch.arguments(["run", "tty"]).threads, 1)
         self.assertEqual(tpch.arguments(["run", "tty", "--queries", "3"]).queries, [3])
         for options in (("--database", "/sdcard/a'; DROP TABLE t;--.duckdb"),
                         ("--database", "/data/tpch.duckdb"), ("--repeats", "0"),
                         ("--timeout", "nan"), ("--timeout", "inf"), ("--timeout", "0"),
                         ("--queries", "22"), ("--memory-limit-mb", "0"),
-                        ("--memory-limit-mb", "24")):
+                        ("--memory-limit-mb", "24"), ("--threads", "0"), ("--threads", "3")):
             with self.subTest(options=options), patch("sys.stderr", io.StringIO()), \
                     self.assertRaises(SystemExit):
                 tpch.arguments(["run", "tty", "manifest.json", *options])

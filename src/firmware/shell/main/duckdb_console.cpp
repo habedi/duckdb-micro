@@ -6,7 +6,6 @@
 #include <stdexcept>
 
 #include "duckdb.hpp"
-#include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb_static_extension.h"
 #include "esp_console.h"
 #include "esp_heap_caps.h"
@@ -109,14 +108,11 @@ void sql_task(void* argument) {
             throw std::runtime_error("Cannot configure DuckDB worker stack");
         }
         duckdb::DBConfig config;
-        config.SetOptionByName("threads", duckdb::Value("2"));
+        config.SetOptionByName("threads", duckdb::Value("1"));
         config.SetOptionByName("async_threads", duckdb::Value("0"));
         config.SetOptionByName("memory_limit", duckdb::Value("8MB"));
         config.SetOptionByName("temp_directory", duckdb::Value(""));
         duckdb::DuckDB database(request.db_path, &config);
-        if (duckdb::TaskScheduler::GetScheduler(*database.instance).NumberOfThreads() != 2) {
-            throw std::runtime_error("Cannot start DuckDB query worker");
-        }
         duckdb::Connection connection(database);
         if (request.db_path) {
             printf("DuckDB 2.0.0, database %s; storage under /sdcard and /data.\n",

@@ -84,7 +84,9 @@ Features and behavior of the console:
 - One-shot execution: Run `duckdb -c "SELECT 42;"` to execute SQL and return to `msh>`.
 - Dot-commands: Use `.tables` to inspect tables, `.help` for examples, and `.quit` or `.exit` to return to `msh>`.
 - Extensions: Core functions, Parquet reader and writer (`read_parquet`), and JSON (`read_json_auto`).
-- Resource limits: Thread count is set to 1, buffer memory limit is capped at 8 MB, and spilling to disk is disabled.
+- Resource limits: One query thread by default, an 8 MB buffer memory limit, and spilling disabled.
+- Query execution: The calling task runs on CPU 0, and one pthread-backed FreeRTOS worker runs on CPU 1 with a 64 KB PSRAM stack.
+  `SET threads=1` disables the worker; `SET threads=2` restores it. More than two query threads and asynchronous workers are rejected.
 - Execution stack: The SQL engine runs in a dedicated FreeRTOS task with a 64 KB stack allocated in PSRAM.
 
 ### Verification and Testing
@@ -178,7 +180,7 @@ under `build/hardware/tpch-*`. Automatically created SD databases are removed af
 success and retained after failure for inspection. Existing files are never overwritten.
 The recorded digest identifies the host fixture; serial loading creates a new database
 with the same table contents, rather than copying its binary representation.
-The firmware retains its one-thread, 8 MB buffer limit with spilling disabled.
+The firmware defaults to one query thread and an 8 MB buffer limit with spilling disabled.
 The subset is a workload experiment, not an official TPC-H result.
 
 For scale factor 0.01, select a separate fixture directory and the scale:
@@ -204,3 +206,20 @@ make check-tpch TPCH_ARGS='--memory-limit-mb 12 --queries 1 6 3 12 14'
 The selected limit is applied in each query session and saved in the run settings.
 Imports retain the firmware limit. The CSV also records minimum free bytes since boot;
 this low-water mark includes loading and earlier queries, rather than measuring each query alone.
+Use `--threads 2` in `TPCH_ARGS` to benchmark the CPU 1 worker. Thread count is saved
+with the run settings. Parallel execution can increase memory use and does not guarantee a speedup.
+
+### Dual-Core Verification
+
+```shell
+make check-dualcore TTY=/dev/ttyACM0
+```
+
+This check runs five sessions with two independent scans of one million rows each. It compares aggregate
+results, switches between one and two query threads, and requires CPU 1 execution
+with a PSRAM stack before and after restarting the worker. Post-session memory
+checks use the same sustained-loss thresholds as the stress runner. Captures are
+saved under `build/hardware/dualcore-*`.
+
+The standalone probe remains configured for one thread. Small queries may use only
+one core, and parallel queries can require more buffer memory than single-threaded queries.

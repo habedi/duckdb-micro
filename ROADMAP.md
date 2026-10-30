@@ -1,16 +1,16 @@
 ## Feature Roadmap
 
-### 1. Core SQL Engine & Portability
+### 1. Core SQL Engine and Portability
 
-* **Toolchain & Cross-Compilation**
-    * [x] ESP-IDF v6.1 cross-compilation support using `riscv32-esp-elf` (GCC 15.2).
+* **Toolchain and Cross-Compilation**
+    * [x] ESP-IDF v6.1 cross-compilation support using `riscv32-esp-elf`.
     * [x] Espressif LLVM (`esp-clang` v21.1.3) toolchain with aggressive size optimization (`-Oz`), fitting `.flash.text` under the 16 MB ESP32-P4
       virtual MMU instruction cache limit.
     * [x] Local-exec TLS model (`-ftls-model=local-exec`) resolving microcontroller thread-local storage relocations.
-    * [x] Reproducible developer environment via Nix flake and Python 3.15.
+    * [x] Reproducible developer environment via Nix flake.
     * [x] Upstream DuckDB 2.0 submodule integration with patch automation (`src/patches/duckdb-esp32p4.diff`).
     * [x] Symbol conflict isolation renaming bundled mbedTLS symbols against ESP-IDF crypto libraries.
-* **Architecture & Memory Model**
+* **Architecture and Memory Model**
     * [x] Target ESP32-P4 revision v1.3 with 32 MB PSRAM (16-line 200 MHz) and 32 MB flash.
     * [x] 8 MB buffer-manager memory limit with temporary spilling disabled.
     * [x] PSRAM allocation priority to preserve scarce internal SRAM for task stacks and FreeRTOS mutexes.
@@ -21,13 +21,13 @@
 
 ---
 
-### 2. Storage & Filesystem Integration
+### 2. Storage and Filesystem Integration
 
-* **SD Card & FATFS**
+* **SD Card and FATFS**
     * [x] MicroSD card FATFS VFS driver mounted at `/sdcard`.
     * [x] Querying external CSV files from `/sdcard` via DuckDB `read_csv`.
     * [x] POSIX-compatible overwrite handling in `LocalFileSystem::MoveFile` over FatFS `f_rename`.
-* **Database Persistence & File Formats**
+* **Database Persistence and File Formats**
     * [x] In-memory database sessions (`:memory:` default).
     * [x] On-disk DuckDB database files on `/sdcard` (`duckdb [FILE]` and `ATTACH`).
     * [x] Internal SPI flash storage support via LittleFS mounted at `/data` with PSRAM flash-stack worker shim.
@@ -38,7 +38,7 @@
 
 ---
 
-### 3. Interactive Shell & Developer Tooling
+### 3. Interactive Shell and Developer Tooling
 
 * **Command Line Interface (`msh` / MicroShell)**
     * [x] Interactive serial REPL over UART0 (CH343 USB bridge, 115200 baud).
@@ -55,20 +55,20 @@
 
 ---
 
-### 4. Networking & Remote Querying
+### 4. Networking and Remote Querying
 
 * **Wireless Transport (ESP32-C6 Co-Processor)**
     * [x] ESP-Hosted SDIO transport initialization communicating with onboard ESP32-C6.
     * [x] Wi-Fi 6 station connection management and credential persistence.
     * [x] Shell commands for wireless networking (`wifi_scan`, `wifi_connect`, `ifconfig`, `ping`).
-* **Remote Data & Protocols**
+* **Remote Data and Protocols**
     * [ ] HTTP/HTTPS client support for remote CSV fetching (`httpfs` or lightweight shim).
     * [ ] Lightweight REST or WebSocket query interface running on the ESP32-P4.
     * [ ] Remote telemetry and logging stream over Wi-Fi.
 
 ---
 
-### 5. Validation, Testing & Reliability
+### 5. Validation, Testing and Reliability
 
 * **Host Regression Tests**
     * [x] Unicode decomposition and UTF-8 boundary regression tests (`test_unicode`).

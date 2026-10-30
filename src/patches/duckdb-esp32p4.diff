@@ -945,7 +945,7 @@ diff --git a/src/parallel/task_scheduler.cpp b/src/parallel/task_scheduler.cpp
 +		static thread_local bool reported = false;
 +		if (!reported) {
 +			char stack_probe;
-+			ESP_LOGI("duckdb", "Query worker: CPU %d, PSRAM stack %s", xPortGetCoreID(),
++			ESP_LOGI("duckdb_worker", "Query worker: CPU %d, PSRAM stack %s", xPortGetCoreID(),
 +			         esp_ptr_external_ram(&stack_probe) ? "yes" : "no");
 +			reported = true;
 +		}
@@ -1220,3 +1220,20 @@ diff --git a/third_party/concurrentqueue/lightweightsemaphore.h b/third_party/co
  		assert(rc == 0);
  		(void)rc;
  	}
+diff --git a/src/parallel/task_scheduler_pool.cpp b/src/parallel/task_scheduler_pool.cpp
+--- a/src/parallel/task_scheduler_pool.cpp
++++ b/src/parallel/task_scheduler_pool.cpp
+@@ -204,9 +204,13 @@
+ 					SetThreadAffinity(*worker_thread, available_cpus, threads.size());
+ 				}
+ 			} catch (std::exception &ex) {
++#ifdef ESP_PLATFORM
++				throw;
++#else
+ 				// thread constructor failed - this can happen when the system has too many threads allocated
+ 				// in this case we cannot allocate more threads - stop launching them
+ 				break;
++#endif
+ 			}
+ 			auto thread_wrapper = make_uniq<TaskSchedulerThread>(std::move(worker_thread));
+ 
