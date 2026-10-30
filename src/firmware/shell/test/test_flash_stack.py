@@ -74,6 +74,9 @@ int main(void)
     assert(s_worker_mutex && !s_worker_task);
     assert(takes == 0 && notifications == 0 && direct_calls == 0);
     fail_task = false;
+    assert(flash_stack_shim_init() == ESP_OK);
+    assert(flash_stack_shim_init() == ESP_OK);
+    assert(s_worker_task && takes == 0 && notifications == 0);
     assert(__wrap_esp_partition_erase_range(NULL, 0, 0) == ESP_OK);
     assert(takes == 1 && notifications == 1 && direct_calls == 0);
     assert(s_worker_task && !s_current_req);

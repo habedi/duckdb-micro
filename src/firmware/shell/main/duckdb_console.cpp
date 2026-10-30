@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "duckdb.hpp"
+#include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb_static_extension.h"
 #include "esp_console.h"
 #include "esp_heap_caps.h"
@@ -22,6 +23,7 @@ extern "C" int32_t duckdb_extension_parquet_describe(duckdb_extension_descriptor
 extern "C" int32_t duckdb_extension_json_describe(duckdb_extension_descriptor*);
 extern "C" bool shell_resolve_arg(const char* cmd, const char* in, char* out, size_t out_len);
 extern "C" void shell_restore_linenoise_callbacks(void);
+extern "C" esp_err_t flash_stack_shim_init(void);
 
 namespace {
 struct Request {
@@ -92,6 +94,10 @@ void sql_task(void* argument) {
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
     try {
+        // Initialize the shared flash worker before either query core can use it.
+        if (flash_stack_shim_init() != ESP_OK) {
+            throw std::runtime_error("Cannot initialize DuckDB flash worker");
+        }
         auto worker = esp_pthread_get_default_config();
         worker.stack_size = 65536;
         worker.stack_alloc_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
@@ -108,6 +114,9 @@ void sql_task(void* argument) {
         config.SetOptionByName("memory_limit", duckdb::Value("8MB"));
         config.SetOptionByName("temp_directory", duckdb::Value(""));
         duckdb::DuckDB database(request.db_path, &config);
+        if (duckdb::TaskScheduler::GetScheduler(*database.instance).NumberOfThreads() != 2) {
+            throw std::runtime_error("Cannot start DuckDB query worker");
+        }
         duckdb::Connection connection(database);
         if (request.db_path) {
             printf("DuckDB 2.0.0, database %s; storage under /sdcard and /data.\n",
