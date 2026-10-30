@@ -123,7 +123,7 @@ def main():
                 command(f".output {prefix}.large.sql")
                 command("SELECT repeat('x', 20000);")
                 command(".output")
-                command(f".read {prefix}.large.sql", b"SQL input line exceeds", allow_error=True)
+                command(f".read {prefix}.large.sql", b"exceeds 16 KiB", allow_error=True)
                 command("SELECT 6 * 7;", b"42")
                 command("SELECT", prompt=b"   ...> ")
                 time.sleep(0.1)
