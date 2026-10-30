@@ -169,3 +169,31 @@ int main() {
     assert(rejected);
 }
 ''')
+
+    def test_queue_allocations_preserve_alignment_and_never_fall_back_to_internal_ram(self):
+        source = (ROOT / "external/duckdb/src/parallel/task_scheduler_queue.cpp").read_text()
+        start = source.index("struct TaskQueueTraits")
+        traits = source[start:source.index("typedef duckdb_moodycamel::ConcurrentQueue<", start)]
+        self.compile_and_run(r'''
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#define ESP_PLATFORM 1
+constexpr int MALLOC_CAP_SPIRAM = 1, MALLOC_CAP_8BIT = 2;
+bool fail = false;
+void *heap_caps_aligned_alloc(size_t alignment, size_t size, int caps) {
+    assert(alignment == alignof(std::max_align_t) && caps == 3);
+    return fail ? nullptr : std::malloc(size);
+}
+void heap_caps_free(void *ptr) { std::free(ptr); }
+namespace duckdb_moodycamel { struct ConcurrentQueueDefaultTraits {}; }
+''' + traits + r'''
+int main() {
+    auto ptr = TaskQueueTraits::malloc(128);
+    assert(ptr != nullptr);
+    TaskQueueTraits::free(ptr);
+    fail = true;
+    assert(TaskQueueTraits::malloc(128) == nullptr);
+}
+''')

@@ -1237,3 +1237,31 @@ diff --git a/src/parallel/task_scheduler_pool.cpp b/src/parallel/task_scheduler_
  			}
  			auto thread_wrapper = make_uniq<TaskSchedulerThread>(std::move(worker_thread));
 
+diff --git a/src/parallel/task_scheduler_queue.cpp b/src/parallel/task_scheduler_queue.cpp
+--- a/src/parallel/task_scheduler_queue.cpp
++++ b/src/parallel/task_scheduler_queue.cpp
+@@ -5,6 +5,9 @@
+ #ifndef DUCKDB_NO_THREADS
+ #include "concurrentqueue.h"
+ #endif
++#ifdef ESP_PLATFORM
++#include "esp_heap_caps.h"
++#endif
+
+ namespace duckdb {
+
+@@ -14,6 +17,14 @@
+
+ #ifndef DUCKDB_NO_THREADS
+ struct TaskQueueTraits : public duckdb_moodycamel::ConcurrentQueueDefaultTraits {
++#ifdef ESP_PLATFORM
++	static void *malloc(size_t size) {
++		return heap_caps_aligned_alloc(alignof(std::max_align_t), size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
++	}
++	static void free(void *ptr) {
++		heap_caps_free(ptr);
++	}
++#endif
+ 	//! Consumers move on to the next producer after this many tasks (default: 256)
+ 	static constexpr uint32_t EXPLICIT_CONSUMER_CONSUMPTION_QUOTA_BEFORE_ROTATE = 16;
+ };

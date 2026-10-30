@@ -215,8 +215,8 @@ with the run settings. Parallel execution can increase memory use and does not g
 make check-dualcore TTY=/dev/ttyACM0
 ```
 
-This check runs five sessions with two independent scans of one million rows each. It compares aggregate
-results, switches between one and two query threads, and requires CPU 1 execution
+This check runs five sessions with two independent scans of one million rows each.
+It compares aggregate results, switches between one and two query threads, and requires CPU 1 execution
 with a PSRAM stack before and after restarting the worker. Post-session memory
 checks use the same sustained-loss thresholds as the stress runner. Captures are
 saved under `build/hardware/dualcore-*`.

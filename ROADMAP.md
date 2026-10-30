@@ -17,7 +17,7 @@
     * [x] Allocation alignment preserving `max_align_t` boundaries across buffer resizing.
     * [x] Non-swapping memory management (omitting unsupported `mlock`/`madvise` calls).
     * [x] Custom libc math shim (`llroundl`) resolving GCC 15.2 RISC-V recursion and precision issues.
-    * [ ] Dual-core query parallelization using CPU 1 via FreeRTOS worker tasks (currently it's single-threaded).
+    * [x] Optional dual-core query execution using a CPU 1 FreeRTOS worker with a 64 KB PSRAM stack (`SET threads=2`; one thread by default).
 
 ---
 
