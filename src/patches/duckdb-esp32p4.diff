@@ -1865,4 +1865,3 @@ diff --git a/src/common/thread_util.cpp b/src/common/thread_util.cpp
 +	ss << GetThreadId();
  	return ss.str();
  }
-
