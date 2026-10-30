@@ -22,6 +22,8 @@ CSV = b"id,name\n1,one\n2,two\n"
 
 
 class FixtureHandler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
     def do_GET(self):
         if self.path == "/redirect":
             self.send_response(302)
