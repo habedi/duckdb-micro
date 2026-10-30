@@ -10,6 +10,9 @@ import tempfile
 import unittest
 from unittest.mock import Mock
 
+
+RUNNER = shlex.split(os.environ.get("TEST_RUNNER", ""))
+
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "src/firmware/shell/main/network.cpp"
 
@@ -28,7 +31,7 @@ class NetworkTests(unittest.TestCase):
             command += shlex.split(os.environ.get("LDFLAGS", ""))
             result = subprocess.run(command, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
-            result = subprocess.run([str(binary)], capture_output=True, text=True)
+            result = subprocess.run([*RUNNER, str(binary)], capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_hardware_http_fixtures(self):

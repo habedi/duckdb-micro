@@ -1,4 +1,3 @@
-# Experimental image uses the confirmed 32 MB P4 flash, without OTA slots.
 # Name, Type, SubType, Offset, Size, Flags
 nvs, data, nvs, 0x9000, 0x6000,
 phy_init, data, phy, 0xf000, 0x1000,

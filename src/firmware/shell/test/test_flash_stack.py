@@ -8,6 +8,9 @@ import tempfile
 import unittest
 
 
+RUNNER = shlex.split(os.environ.get("TEST_RUNNER", ""))
+
+
 STUBS = r"""
 #include <assert.h>
 #include <stdbool.h>
@@ -95,9 +98,12 @@ class FlashStackTests(unittest.TestCase):
             binary = Path(directory) / "flash"
             harness.write_text(STUBS + source + CHECKS)
             command = shlex.split(os.environ.get("CC", "cc"))
+            for name in ("CFLAGS", "SANFLAGS"):
+                command += shlex.split(os.environ.get(name, ""))
             command += ["-std=c17", "-Wall", "-Wextra", "-Werror", str(harness), "-o", str(binary)]
+            command += shlex.split(os.environ.get("LDFLAGS", ""))
             subprocess.run(command, check=True)
-            subprocess.run([str(binary)], check=True)
+            subprocess.run([*RUNNER, str(binary)], check=True)
 
 
 if __name__ == "__main__":

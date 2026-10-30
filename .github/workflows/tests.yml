@@ -29,7 +29,12 @@ permissions:
 
 jobs:
   test:
+    name: Host Tests (${{ matrix.target }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [test, asan, ubsan]
 
     steps:
       - name: Checkout repository
@@ -42,7 +47,7 @@ jobs:
         uses: cachix/install-nix-action@v31
 
       - name: Run tests
-        run: nix develop -c make test
+        run: nix develop -c make ${{ matrix.target }}
 
   firmware:
     runs-on: ubuntu-24.04

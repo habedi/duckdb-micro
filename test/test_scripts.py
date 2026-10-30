@@ -131,6 +131,16 @@ class ScriptTests(unittest.TestCase):
                            cwd=root, env=env, check=True, capture_output=True)
             self.assertTrue((tools / "clang").is_file())
 
+    def test_console_enter_sends_one_carriage_return(self):
+        from serial.tools import miniterm
+
+        result = subprocess.run(["make", "-s", "console", "PYTHON=echo", "TTY=fake-port"],
+                                cwd=ROOT, capture_output=True, text=True, check=True)
+        arguments = result.stdout.split()
+        self.assertIn("--raw", arguments)
+        eol = arguments[arguments.index("--eol") + 1].lower()
+        self.assertEqual(miniterm.EOL_TRANSFORMATIONS[eol]().tx("\n"), "\r")
+
     def test_flash_targets_reset_the_board(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

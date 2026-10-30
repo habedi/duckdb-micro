@@ -8,6 +8,9 @@ import tempfile
 import unittest
 
 
+RUNNER = shlex.split(os.environ.get("TEST_RUNNER", ""))
+
+
 ROOT = Path(__file__).resolve().parents[4]
 
 STUBS = r'''
@@ -114,7 +117,8 @@ class AutocompleteTests(unittest.TestCase):
         self.cwd = Path(directory.name)
 
     def complete(self, text, expected=None, argc=2, edit=False, cwd=None):
-        command = [str(self.binary), str(cwd or self.cwd), text]
+        command = [*RUNNER,
+                   str(self.binary), str(cwd or self.cwd), text]
         if expected is not None:
             command += [expected, str(argc)]
         if edit:
@@ -133,7 +137,7 @@ class AutocompleteTests(unittest.TestCase):
         self.assertEqual(self.complete("cd x", cwd="/"), [])
 
     def test_clear_screen(self):
-        result = subprocess.run([str(self.binary), str(self.cwd), "clear-screen"],
+        result = subprocess.run([*RUNNER, str(self.binary), str(self.cwd), "clear-screen"],
                                 capture_output=True, check=True)
         self.assertEqual(result.stdout, b"\x1b[H\x1b[2J")
 

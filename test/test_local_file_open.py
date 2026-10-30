@@ -8,6 +8,9 @@ import tempfile
 import unittest
 
 
+RUNNER = shlex.split(os.environ.get("TEST_RUNNER", ""))
+
+
 ROOT = Path(__file__).resolve().parents[1]
 STUBS = r'''
 #include <cassert>
@@ -116,10 +119,13 @@ int main() {
             binary = Path(directory) / "flags"
             harness.write_text(harness_source.replace("// FLAGS", flags))
             command = shlex.split(os.environ.get("CXX", "c++"))
+            for name in ("CXXFLAGS", "SANFLAGS"):
+                command += shlex.split(os.environ.get(name, ""))
             command += ["-std=c++17", "-Wall", "-Wextra", "-Werror", "-DESP_PLATFORM",
                         str(harness), "-o", str(binary)]
+            command += shlex.split(os.environ.get("LDFLAGS", ""))
             subprocess.run(command, check=True)
-            subprocess.run([str(binary)], check=True)
+            subprocess.run([*RUNNER, str(binary)], check=True)
 
     @classmethod
     def setUpClass(cls):
@@ -133,14 +139,17 @@ int main() {
         harness.write_text(STUBS + source[start:end] + CHECKS)
         cls.binary = work / "open"
         command = shlex.split(os.environ.get("CXX", "c++"))
+        for name in ("CXXFLAGS", "SANFLAGS"):
+            command += shlex.split(os.environ.get(name, ""))
         command += ["-std=c++17", "-Wall", "-Wextra", "-Werror", "-DESP_PLATFORM",
                     str(harness), "-o", str(cls.binary)]
+        command += shlex.split(os.environ.get("LDFLAGS", ""))
         subprocess.run(command, check=True)
 
     def test_failed_opens_preserve_data_and_errors(self):
         for case in ("exclusive", "missing", "exception"):
             with self.subTest(case=case):
-                result = subprocess.run([str(self.binary), self.directory.name, case],
+                result = subprocess.run([*RUNNER, str(self.binary), self.directory.name, case],
                                         capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 

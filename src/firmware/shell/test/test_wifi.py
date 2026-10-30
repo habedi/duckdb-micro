@@ -8,6 +8,9 @@ import tempfile
 import unittest
 
 
+RUNNER = shlex.split(os.environ.get("TEST_RUNNER", ""))
+
+
 STUBS = r"""
 #include <assert.h>
 #include <stdbool.h>
@@ -180,7 +183,7 @@ class WifiTests(unittest.TestCase):
 
     def run_case(self, name, data=""):
         return subprocess.run(
-            [str(self.binary), name], input=data, text=True,
+            [*RUNNER, str(self.binary), name], input=data, text=True,
             capture_output=True, check=True,
         ).stdout
 

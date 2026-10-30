@@ -11,6 +11,9 @@ import unittest
 from unittest.mock import Mock, patch
 
 
+RUNNER = shlex.split(os.environ.get("TEST_RUNNER", ""))
+
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -32,9 +35,13 @@ class DualCoreTests(unittest.TestCase):
             binary = path.with_suffix("")
             path.write_text(source)
             command = shlex.split(os.environ.get("CXX", "c++"))
-            subprocess.run([*command, "-std=c++17", "-Wall", "-Wextra", "-Werror",
-                            str(path), "-o", str(binary)], check=True)
-            subprocess.run([str(binary)], check=True)
+            for name in ("CXXFLAGS", "SANFLAGS"):
+                command += shlex.split(os.environ.get(name, ""))
+            command += ["-std=c++17", "-Wall", "-Wextra", "-Werror",
+                        str(path), "-o", str(binary)]
+            command += shlex.split(os.environ.get("LDFLAGS", ""))
+            subprocess.run(command, check=True)
+            subprocess.run([*RUNNER, str(binary)], check=True)
 
     def test_failed_worker_semaphore_allocation_throws_without_assertions(self):
         header = ROOT / "external/duckdb/third_party/concurrentqueue/lightweightsemaphore.h"
