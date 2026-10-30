@@ -34,7 +34,7 @@ lacks a lot of conventional features like a lot of (fast) memory, a full-feature
 
 See the [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
 
-**This project is very experimental.
+**This project is very experimental and is not affiliated with DuckDB foundations.
 You can download the latest pre-built firmware from the [releases page](https://github.com/habedi/duckdb-micro/releases).**
 
 ---
