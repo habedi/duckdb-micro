@@ -100,6 +100,42 @@ Features and behavior of the console:
 The masked Wi-Fi password prompt ignores blank lines and supports Backspace and Ctrl+C.
 For an open network, pass an explicit empty password: `wifi_connect "SSID" ""`.
 
+### Upstream DuckDB CLI
+
+Run `duckdb --cli` or `duckdb --cli /sdcard/database.duckdb` for the ported upstream CLI.
+The plain `duckdb` command keeps the compact console described above.
+
+```text
+msh> duckdb --cli
+DuckDB upstream CLI. End SQL with ;. .help lists commands; .quit returns to msh.
+duckdb> SELECT
+   ...> 6 * 7 AS answer;
+```
+
+This mode accepts multiline SQL and multiple statements. End SQL with a semicolon.
+It includes upstream table, box, column, CSV, JSON, JSON Lines, Markdown, list, tabs,
+line, quote, HTML, LaTeX, Tcl, ASCII, insert, and trash output modes. Use `.mode MODE`
+and `.headers on|off` to choose the output. `.help` lists the available commands.
+
+Useful commands include `.tables`, `.schema`, `.indexes`, `.databases`, `.manual`,
+`.last`, `.timer`, `.changes`, `.separator`, `.nullvalue`, `.open`, `.import`,
+`.read`, `.output`, and `.once`. File paths use MicroShell's current directory.
+CSV imports default to a 64 KiB input buffer. Up/Down navigate history; Tab completes
+keywords and dot commands, with at most 16 suggestions.
+
+The CLI uses a 96 KiB PSRAM task stack, an 8 MB buffer limit, and no temporary spilling.
+SQL input is limited to 16 KiB across lines, and `.read` allows four nested files.
+Converted display data is limited to 2 MiB. Width-aware modes may collect a complete
+result before display, so use `LIMIT` for large queries. Exceeding a limit reports an error.
+
+Ctrl+C cancels pending input at the prompt. Interruption of a running query is unavailable.
+External pagers, system commands, external editors, browser launchers, working-directory
+changes, and the upstream SQL history view are unavailable. `.quit`, `.exit`, and Ctrl+D
+return to MicroShell. The compact console retains its serial pager.
+
+Run `make check-cli TTY=/dev/ttyACM0` to check output modes, multiline SQL, file commands,
+database reopening, and heap usage across repeated sessions.
+
 ### Remote CSV Downloads
 
 Connect Wi-Fi, then download a CSV file to a new local path:

@@ -98,15 +98,28 @@ int main() {
 #include <cassert>
 #include <cstdint>
 #include <stdexcept>
-namespace duckdb { using InvalidInputException = std::runtime_error; }
+#include <vector>
+using idx_t = uint64_t;
+namespace duckdb {
+using InvalidInputException = std::runtime_error;
+struct string_t { uint32_t length; uint32_t GetSize() const { return length; } };
+struct Vector { string_t value; };
+struct FlatVector {
+    template<class T> static const T* GetData(Vector& v) { return &v.value; }
+    static bool IsNull(Vector&, idx_t) { return false; }
+};
+}
 struct Chunk {
     uint32_t bytes;
+    std::vector<duckdb::Vector> data;
     uint32_t GetAllocationSize() { return bytes; }
+    idx_t size() const { return 1; }
+    idx_t ColumnCount() const { return data.size(); }
 };
 struct Renderer {
     uint32_t render_bytes = 0;
-    void add(uint32_t size) {
-        Chunk chunk{size};
+    void add(uint32_t size, uint32_t length = 0) {
+        Chunk chunk{size, {{{length}}}};
         auto varchar_chunk = &chunk;
 '''
         checks = r'''
@@ -121,6 +134,11 @@ int main() {
         catch (const std::runtime_error&) {}
         assert(renderer.render_bytes == 2 * 1024 * 1024);
     }
+    Renderer referenced;
+    referenced.add(0, 1024 * 1024);
+    referenced.add(0, 1024 * 1024);
+    try { referenced.add(0, 1); assert(false); }
+    catch (const std::runtime_error&) {}
 }
 '''
         self.compile_run(stubs + guard + checks)

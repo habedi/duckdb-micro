@@ -1805,13 +1805,25 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
 diff --git a/tools/shell/shell_renderer.cpp b/tools/shell/shell_renderer.cpp
 --- a/tools/shell/shell_renderer.cpp
 +++ b/tools/shell/shell_renderer.cpp
-@@ -416,6 +416,14 @@
+@@ -416,6 +416,26 @@
  			}
  		}
  	}
 +#ifdef ESP_PLATFORM
 +	// Converted strings are outside the buffer manager's memory budget.
 +	auto bytes = varchar_chunk->GetAllocationSize();
++	for (idx_t col = 0; col < varchar_chunk->ColumnCount(); ++col) {
++		auto &values = varchar_chunk->data[col];
++		auto strings = duckdb::FlatVector::GetData<duckdb::string_t>(values);
++		for (idx_t row = 0; row < varchar_chunk->size(); ++row) {
++			if (duckdb::FlatVector::IsNull(values, row)) continue;
++			auto length = strings[row].GetSize();
++			if (length > 2 * 1024 * 1024 || bytes > 2 * 1024 * 1024 - length) {
++				throw duckdb::InvalidInputException("CLI rendering exceeds 2 MiB; use LIMIT or fewer columns");
++			}
++			bytes += length;
++		}
++	}
 +	if (bytes > 2 * 1024 * 1024 || render_bytes > 2 * 1024 * 1024 - bytes) {
 +		throw duckdb::InvalidInputException("CLI rendering exceeds 2 MiB; use LIMIT or fewer columns");
 +	}

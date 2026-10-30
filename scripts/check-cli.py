@@ -74,6 +74,8 @@ def main():
                     command("SELECT 6 * 7 AS id, concat('cli_', 'value') AS label;", b"cli_value")
                 command(".mode trash")
                 command("SELECT 6 * 7;")
+                command(".mode csv")
+                command("SELECT repeat('x', 2100000);", b"CLI rendering exceeds", allow_error=True)
                 command(".mode tabs")
                 command(".headers off")
                 command(f".read {prefix}.sql")
@@ -88,6 +90,12 @@ def main():
                 command(f".output {prefix}.out")
                 command("SELECT concat('cli_', 'value');")
                 command(".output")
+                command(".mode list")
+                command(f".output {prefix}.large.sql")
+                command("SELECT repeat('x', 20000);")
+                command(".output")
+                command(f".read {prefix}.large.sql", b"SQL input line exceeds", allow_error=True)
+                command("SELECT 6 * 7;", b"42")
                 command("SELECT", prompt=b"   ...> ")
                 time.sleep(0.1)
                 port.write(b"\x03")
@@ -96,6 +104,7 @@ def main():
                 command(f".open {prefix}.duckdb")
                 command("CREATE TABLE persisted AS SELECT 6 * 7 AS x;")
                 command("CHECKPOINT;")
+            command(".log stdout")
             command(".exit", prompt=b"msh> ", allow_error=True)
             if session == 0:
                 command(f"cat {prefix}.out", b"cli_value", prompt=b"msh> ")
@@ -109,7 +118,7 @@ def main():
                 stress.check_memory(baseline, sample, streaks, 5)
             print(f"Session {session + 1}: correct results, reopen, and cleanup; "
                   f"internal free={sample['Internal SRAM']['free']}", flush=True)
-        for suffix in (".csv", ".sql", ".loop.sql", ".out", ".duckdb"):
+        for suffix in (".csv", ".sql", ".loop.sql", ".large.sql", ".out", ".duckdb"):
             command("rm " + prefix + suffix, prompt=b"msh> ")
     print("PASS: upstream CLI modes, multiline SQL, file commands, and repeated sessions")
 
