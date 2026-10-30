@@ -22,7 +22,7 @@ add_prebuilt_library(duckdb_yyjson
 target_link_libraries(${COMPONENT_LIB} PRIVATE
                       duckdb_parquet duckdb_json duckdb_zstd duckdb_yyjson
                       duckdb_core_functions duckdb_port)
-target_compile_definitions(${COMPONENT_LIB} PRIVATE NDEBUG DUCKDB_NO_THREADS)
+target_compile_definitions(${COMPONENT_LIB} PRIVATE NDEBUG)
 target_compile_options(${COMPONENT_LIB} PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:-std=gnu++17>"
                        "$<$<COMPILE_LANGUAGE:C>:-Wno-error=unused-function>")
 set_source_files_properties("${ROOT}/src/firmware/main/llroundl.cpp" PROPERTIES COMPILE_OPTIONS "-fno-builtin-llroundl")

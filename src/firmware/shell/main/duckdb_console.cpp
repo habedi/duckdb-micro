@@ -9,6 +9,7 @@
 #include "duckdb_static_extension.h"
 #include "esp_console.h"
 #include "esp_heap_caps.h"
+#include "esp_pthread.h"
 #include "esp_rom_sys.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -91,8 +92,19 @@ void sql_task(void* argument) {
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
     try {
+        auto worker = esp_pthread_get_default_config();
+        worker.stack_size = 65536;
+        worker.stack_alloc_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
+        worker.pin_to_core = 1;
+        worker.prio = 1;
+        worker.thread_name = "duckdb_worker";
+        worker.inherit_cfg = true;
+        if (esp_pthread_set_cfg(&worker) != ESP_OK) {
+            throw std::runtime_error("Cannot configure DuckDB worker stack");
+        }
         duckdb::DBConfig config;
-        config.SetOptionByName("threads", duckdb::Value("1"));
+        config.SetOptionByName("threads", duckdb::Value("2"));
+        config.SetOptionByName("async_threads", duckdb::Value("0"));
         config.SetOptionByName("memory_limit", duckdb::Value("8MB"));
         config.SetOptionByName("temp_directory", duckdb::Value(""));
         duckdb::DuckDB database(request.db_path, &config);

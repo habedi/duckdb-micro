@@ -922,15 +922,45 @@ index ac7658fc50a..4d0455d4bc4 100644
  	if (getrlimit(RLIMIT_NOFILE, &limit) != 0 || limit.rlim_cur == RLIM_INFINITY) {
  		return optional_idx();
 diff --git a/src/parallel/task_scheduler.cpp b/src/parallel/task_scheduler.cpp
-index a4106a02057..7649453abbf 100644
 --- a/src/parallel/task_scheduler.cpp
 +++ b/src/parallel/task_scheduler.cpp
-@@ -359,7 +359,7 @@ void TaskScheduler::YieldThread() {
+@@ -8,6 +8,12 @@
+ #include "duckdb/parallel/task_scheduler_pool.hpp"
+ #include "duckdb/parallel/task_scheduler_queue.hpp"
+ #include "duckdb/storage/block_allocator.hpp"
++#ifdef ESP_PLATFORM
++#include "esp_log.h"
++#include "esp_memory_utils.h"
++#include "freertos/FreeRTOS.h"
++#include "freertos/task.h"
++#endif
+ #ifndef DUCKDB_NO_THREADS
+ #include "concurrentqueue.h"
+ #include "duckdb/common/thread.hpp"
+@@ -120,6 +126,15 @@
+ bool TaskScheduler::TryDequeueAndProcessTask(const DBConfig &config, TaskSchedulerQueue &queue, ConsumerToken &consumer,
+                                              shared_ptr<Task> &task) {
+ 	if (queue.Dequeue(consumer, task)) {
++#ifdef ESP_PLATFORM
++		static thread_local bool reported = false;
++		if (!reported) {
++			char stack_probe;
++			ESP_LOGI("duckdb", "Query worker: CPU %d, PSRAM stack %s", xPortGetCoreID(),
++			         esp_ptr_external_ram(&stack_probe) ? "yes" : "no");
++			reported = true;
++		}
++#endif
+ 		auto process_mode = TaskExecutionMode::PROCESS_ALL;
+ 		if (Settings::Get<SchedulerProcessPartialSetting>(config)) {
+ 			process_mode = TaskExecutionMode::PROCESS_PARTIAL;
+@@ -359,7 +374,9 @@
  }
 
  idx_t TaskScheduler::GetEstimatedCPUId() {
 -#if defined(__EMSCRIPTEN__)
-+#if defined(__EMSCRIPTEN__) || defined(DUCKDB_NO_THREADS)
++#if defined(ESP_PLATFORM)
++	return xPortGetCoreID();
++#elif defined(__EMSCRIPTEN__) || defined(DUCKDB_NO_THREADS)
  	// FIXME: Wasm + multithreads can likely be implemented as
  	//   return return (idx_t)std::hash<std::thread::id>()(std::this_thread::get_id());
  	return 0;
@@ -1087,3 +1117,86 @@ index fc4d18b2e48..9434a7aad46 100644
              state->v1 = XXH32_round(state->v1, XXH_readLE32(p32, endian)); p32++;
              state->v2 = XXH32_round(state->v2, XXH_readLE32(p32, endian)); p32++;
              state->v3 = XXH32_round(state->v3, XXH_readLE32(p32, endian)); p32++;
+diff --git a/src/main/config.cpp b/src/main/config.cpp
+--- a/src/main/config.cpp
++++ b/src/main/config.cpp
+@@ -681,7 +681,9 @@
+ }
+
+ idx_t DBConfig::GetSystemMaxThreads(FileSystem &fs) {
+-#ifdef DUCKDB_NO_THREADS
++#if defined(ESP_PLATFORM)
++	return 2;
++#elif defined(DUCKDB_NO_THREADS)
+ 	return 1;
+ #else
+ 	idx_t physical_cores = std::thread::hardware_concurrency();
+@@ -700,7 +702,7 @@
+ }
+
+ idx_t DBConfig::GetSystemMaxAsyncThreads(FileSystem &fs) {
+-#ifdef DUCKDB_NO_THREADS
++#if defined(DUCKDB_NO_THREADS) || defined(ESP_PLATFORM)
+ 	return 0;
+ #else
+ 	return MinValue<idx_t>(4 * GetSystemMaxThreads(fs), 256);
+diff --git a/src/main/settings/custom_settings.cpp b/src/main/settings/custom_settings.cpp
+--- a/src/main/settings/custom_settings.cpp
++++ b/src/main/settings/custom_settings.cpp
+@@ -1057,6 +1057,11 @@
+ 		throw InvalidInputException("external_threads must be a positive integer");
+ 	}
+ 	auto new_external_threads = input.GetValue<uint64_t>();
++#ifdef ESP_PLATFORM
++	if (new_external_threads != 1) {
++		throw InvalidInputException("ESP32-P4 requires one external query thread");
++	}
++#endif
+ 	if (info.db) {
+ 		TaskScheduler::GetScheduler(*info.db).SetThreads(info.config.options.maximum_threads, new_external_threads);
+ 	}
+@@ -1737,6 +1742,11 @@
+ 	if (new_val < 1) {
+ 		throw SyntaxException("Must have at least 1 thread!");
+ 	}
++#ifdef ESP_PLATFORM
++	if (new_val > 2) {
++		throw InvalidInputException("ESP32-P4 supports at most two query threads");
++	}
++#endif
+ 	auto new_maximum_threads = NumericCast<idx_t>(new_val);
+ 	if (db) {
+ 		TaskScheduler::GetScheduler(*db).SetThreads(new_maximum_threads, Settings::Get<ExternalThreadsSetting>(config));
+@@ -1775,6 +1785,11 @@
+ 	if (new_val < 0) {
+ 		throw SyntaxException("Cannot have negative async_threads!");
+ 	}
++#ifdef ESP_PLATFORM
++	if (new_val != 0) {
++		throw InvalidInputException("ESP32-P4 does not support async query workers");
++	}
++#endif
+ 	auto new_async_threads = NumericCast<idx_t>(new_val);
+ 	if (db) {
+ 		TaskScheduler::GetScheduler(*db).SetAsyncThreads(new_async_threads);
+diff --git a/third_party/concurrentqueue/lightweightsemaphore.h b/third_party/concurrentqueue/lightweightsemaphore.h
+--- a/third_party/concurrentqueue/lightweightsemaphore.h
++++ b/third_party/concurrentqueue/lightweightsemaphore.h
+@@ -35,7 +35,7 @@
+ }
+ #elif defined(__MACH__)
+ #include <mach/mach.h>
+-#elif defined(__unix__)
++#elif defined(__unix__) || defined(ESP_PLATFORM)
+ #include <semaphore.h>
+ #include <chrono>
+ #elif defined(__MVS__)
+@@ -174,7 +174,7 @@
+ 		}
+ 	}
+ };
+-#elif defined(__unix__) || defined(__MVS__)
++#elif defined(__unix__) || defined(__MVS__) || defined(ESP_PLATFORM)
+ //---------------------------------------------------------
+ // Semaphore (POSIX, Linux, zOS aka MVS)
+ //---------------------------------------------------------

@@ -18,7 +18,6 @@
     * [x] Non-swapping memory management (omitting unsupported `mlock`/`madvise` calls).
     * [x] Custom libc math shim (`llroundl`) resolving GCC 15.2 RISC-V recursion and precision issues.
     * [ ] Dual-core query parallelization using CPU 1 via FreeRTOS worker tasks (currently it's single-threaded).
-    * [ ] Binary size optimization and selective symbol stripping to maximize application partition headroom.
 
 ---
 
@@ -51,7 +50,7 @@
     * [x] Interactive `duckdb>` SQL REPL with query timing and memory statistics.
     * [x] One-shot command execution (`duckdb -c "SQL"` and `duckdb [FILE] -c "SQL"`).
     * [x] Clean prompt separation with temporary suppression of shell tab completion.
-    * [x] Dot-commands in the SQL console (`.quit`, `.exit`, `.help`, `.tables`).
+    * [x] Dot-commands in the SQL console (like `.quit`, `.exit`, `.help`,and `.tables`).
     * [x] Result pagination for large query outputs in the serial terminal (25 rows per page; Space advances, and q stops output).
 
 ---
@@ -80,7 +79,6 @@
     * [x] Standalone SQL self-check firmware probe (`scripts/check-board.py`).
     * [x] Interactive shell verification script (`scripts/check-shell.py`).
     * [x] Feature verification script (`scripts/check-features.py`) testing LittleFS, JSON, and Parquet on a physical board.
-    * [ ] Automated continuous integration (CI) hardware testing rack.
     * [x] Stress testing and memory fragmentation benchmarks (`make check-stress`).
     * [x] TPC-H subset runner with automatic serial fixture loading, host reference results, query timings, and memory reports (`make check-tpch`).
     * [x] Hardware validation of TPC-H queries 1, 6, and 12 at scale factor 0.001.
