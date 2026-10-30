@@ -41,7 +41,8 @@ DRESULT disk_ioctl(BYTE drive, BYTE cmd, void *arg)
   return RES_OK;
 }
 DWORD get_fattime(void) { return (DWORD)(2026 - 1980) << 25 | 1 << 21 | 1 << 16; }
-void *ff_memalloc(size_t size) { return malloc(size); }
+/* Match the SDK FreeRTOS FatFS allocator, which zeroes long-name work buffers. */
+void *ff_memalloc(size_t size) { return calloc(1, size); }
 void ff_memfree(void *ptr) { free(ptr); }
 int ff_mutex_create(int volume) { (void)volume; return 1; }
 void ff_mutex_delete(int volume) { (void)volume; }
