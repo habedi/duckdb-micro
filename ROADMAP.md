@@ -81,4 +81,4 @@
     * [x] Interactive shell verification script (`scripts/check-shell.py`).
     * [x] Feature verification script (`scripts/check-features.py`) testing LittleFS, JSON, and Parquet on a physical board.
     * [ ] Automated continuous integration (CI) hardware testing rack.
-    * [x] Stress testing and memory fragmentation benchmarks (`make check-stress`; one-hour hardware run with 423 completed measured cycles and stable memory; eight-hour testing optional).
+    * [x] Stress testing and memory fragmentation benchmarks (`make check-stress`).
