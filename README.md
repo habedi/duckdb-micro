@@ -21,16 +21,16 @@ lacks a lot of conventional features like a lot of (fast) memory, a full-feature
 
 ### Feature Comparisons
 
-| Feature           | DuckDB                       | DuckDB Micro                           |
-|-------------------|------------------------------|----------------------------------------|
-| Platform          | Desktop and server           | ESP32-P4 (FreeRTOS)                    |
-| Query parallelism | Multi-core                   | Single thread (up to 2)                |
-| Buffer memory     | Host RAM (configurable)      | 8 MB (PSRAM)                           |
-| Disk spilling     | Supported                    | Disabled                               |
-| Data formats      | CSV, JSON, Parquet, and more | CSV, JSON, and Parquet                 |
-| Extensions        | Supported                    | Core functions, JSON, and Parquet only |
-| Remote files      | Direct HTTP(S) via `httpfs`  | Download to local storage first        |
-| User interface    | CLI and language APIs        | MicroShell and optional REST API       |
+| Feature           | DuckDB                                    | DuckDB Micro                           |
+|-------------------|-------------------------------------------|----------------------------------------|
+| Platform          | Desktop and server                        | ESP32-P4 (FreeRTOS)                    |
+| Query parallelism | Multi-core                                | Single thread (up to 2)                |
+| Buffer memory     | Host RAM (configurable)                   | 8 MB (PSRAM)                           |
+| Disk spilling     | Supported                                 | Disabled                               |
+| Data formats      | CSV, JSON, Parquet, and more              | CSV, JSON, and Parquet                 |
+| Extensions        | Supported                                 | Core functions, JSON, and Parquet only |
+| Remote files      | Direct over HTTP(S) access (via `httpfs`) | Download to local storage first        |
+| User interface    | CLI and language APIs                     | MicroShell and optional REST API       |
 
 See [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
 
