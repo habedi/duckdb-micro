@@ -62,9 +62,8 @@
     * [x] Wi-Fi 6 station connection management and credential persistence.
     * [x] Shell commands for wireless networking (`wifi_scan`, `wifi_connect`, `ifconfig`, `ping`).
 * **Remote Data and Protocols**
-    * [ ] HTTP/HTTPS client support for remote CSV fetching (`httpfs` or lightweight shim).
-    * [ ] Lightweight REST or WebSocket query interface running on the ESP32-P4.
-    * [ ] Remote telemetry and logging stream over Wi-Fi.
+    * [ ] HTTP/HTTPS downloader for remote CSV files.
+    * [ ] REST or WebSocket server for queries.
 
 ---
 

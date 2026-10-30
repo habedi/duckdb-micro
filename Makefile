@@ -14,7 +14,7 @@ TPCH_MANIFEST ?= build/tpch/manifest.json
 FORMAT_FILES := $(wildcard src/firmware/main/*.cpp src/firmware/shell/main/*.cpp src/firmware/shell/main/duckdb_console.h test/*.cpp)
 
 .PHONY: help clean clean-all submodules probe-build shell-build firmware-package shell-flash flash probe-flash console \
- check-shell check-probe check-stress check-dualcore prepare-tpch check-tpch espidf-install test probe-test shell-test \
+ check-shell check-probe check-stress check-network check-dualcore prepare-tpch check-tpch espidf-install test probe-test shell-test \
   format lint setup-hooks test-hooks
 
 help: ## Show available commands
@@ -66,6 +66,9 @@ check-shell: ## Run hardware serial check for the shell (e.g. make check-shell [
 
 check-stress: ## Stress SQL and storage, and record heap trends (STRESS_ARGS='--duration 28800' for overnight)
 	$(PYTHON) scripts/check-stress.py $(TTY) $(STRESS_ARGS)
+
+check-network: ## Verify HTTP/HTTPS downloads and authenticated REST queries over Wi-Fi
+	$(PYTHON) scripts/check-network.py $(TTY)
 
 check-dualcore: ## Verify CPU 1 query execution, PSRAM worker stacks, and worker teardown
 	$(PYTHON) scripts/check-dualcore.py $(TTY)

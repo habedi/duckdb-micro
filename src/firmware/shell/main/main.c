@@ -16,6 +16,7 @@
 #include "driver/sdmmc_host.h"
 #include "editor.h"
 #include "duckdb_console.h"
+#include "network.h"
 #include "path_util.h"
 #include "esp_app_format.h"
 #include "esp_chip_info.h"
@@ -1217,12 +1218,15 @@ static bool read_masked_password(char *buf, size_t max_len)
       int c = getchar();
       if (c == EOF || c == 0)
         {
+          clearerr(stdin);
           vTaskDelay(pdMS_TO_TICKS(10));
           continue;
         }
 
       if (c == '\r' || c == '\n')
         {
+          /* Ignore a pending line ending from the command that opened this prompt. */
+          if (idx == 0) continue;
           printf("\n");
           fflush(stdout);
           buf[idx] = '\0';
@@ -2093,6 +2097,7 @@ void app_main(void)
 
   register_commands();
   duckdb_console_register();
+  network_register();
 
   /* 5. Check and validate FOTA running partition state */
   const esp_partition_t *running = esp_ota_get_running_partition();

@@ -55,7 +55,13 @@ static int nvs_erase_all(int handle)
 static int nvs_commit(int handle)
 { (void)handle; commit_calls++; return commit_error; }
 static void nvs_close(int handle) { (void)handle; close_calls++; }
-static void vTaskDelay(int ticks) { (void)ticks; abort(); }
+static int delayed_reads, input_waits;
+static int password_getchar(void) {
+  if (delayed_reads > 0) { delayed_reads--; return EOF; }
+  return getchar();
+}
+#define getchar password_getchar
+static void vTaskDelay(int ticks) { (void)ticks; input_waits++; }
 static int esp_wifi_disconnect(void) { disconnect_calls++; return ESP_OK; }
 static int esp_wifi_set_config(int iface, const wifi_config_t *cfg)
 { (void)iface; captured = *cfg; config_calls++; return config_error; }
@@ -133,8 +139,10 @@ int main(int argc, char **argv)
     assert(config_calls == 0 && disconnect_calls == 0);
   } else if (strcmp(argv[1], "prompt") == 0) {
     char password[65];
+    delayed_reads = 2;
     assert(read_masked_password(password, sizeof(password)));
     assert(strcmp(password, "ac") == 0);
+    assert(input_waits == 2);
     assert(!read_masked_password(password, sizeof(password)));
     for (int i = 0; i < 65; i++) assert(password[i] == 0);
     assert(read_masked_password(password, sizeof(password)));
@@ -193,3 +201,6 @@ class WifiTests(unittest.TestCase):
         self.assertNotIn("secret", output)
         self.assertNotIn("ac", output)
         self.assertEqual(output.count("*"), 73)
+
+    def test_masked_input_ignores_pending_line_endings(self):
+        self.run_case("prompt", "\r\nab\bc\nsecret\x03" + "a" * 64 + "\n")

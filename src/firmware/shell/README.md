@@ -89,6 +89,70 @@ Features and behavior of the console:
   `SET threads=1` disables the worker; `SET threads=2` restores it. More than two query threads and asynchronous workers are rejected.
 - Execution stack: The SQL engine runs in a dedicated FreeRTOS task with a 64 KB stack allocated in PSRAM.
 
+The masked Wi-Fi password prompt ignores blank lines and supports Backspace and Ctrl+C.
+For an open network, pass an explicit empty password: `wifi_connect "SSID" ""`.
+
+### Remote CSV Downloads
+
+Connect Wi-Fi, then download a CSV file to a new local path:
+
+```text
+msh> wifi_connect
+msh> fetch_csv https://example.org/data.csv /sdcard/data.csv
+msh> duckdb -c "SELECT * FROM read_csv('/sdcard/data.csv') LIMIT 10;"
+```
+
+`fetch_csv` supports HTTP and HTTPS, needs HTTP status 200, and limits downloads to 16 MiB.
+It streams data in 2 KiB buffers on a temporary 64 KiB PSRAM task stack.
+TLS allocations use PSRAM. Existing files are never overwritten. Failed downloads remove their partial files.
+Redirects are rejected; use the final URL. The command downloads bytes without checking CSV syntax.
+HTTPS verifies the server hostname, certificate chain, and certificate dates using the ESP-IDF CA bundle.
+On the first HTTPS download after boot, it synchronizes the system clock with `pool.ntp.org`.
+DNS and outbound NTP access are needed for that initial synchronization.
+
+### REST Query Server
+
+The REST server is off at boot. Start it with an existing database file:
+
+```text
+msh> query_server start /sdcard/database.duckdb
+```
+
+The command prints a fresh bearer token. From a computer on the same trusted network, use the board's
+address from `ifconfig` and that token:
+
+```shell
+curl --fail-with-body http://BOARD_IP:8080/query \
+  -H 'Authorization: Bearer TOKEN_FROM_SERIAL' \
+  -H 'Content-Type: text/plain' \
+  --data 'SELECT count(*) FROM samples;'
+```
+
+Responses contain `columns`, `rows`, and `truncated`. Values are strings, with SQL NULL represented by JSON null.
+The endpoint accepts one SELECT statement, opens the selected database read-only for each request, and disables
+external file access. Close any serial database session before sending a request. The console and REST server
+share a busy guard, so they cannot open separate SQL engines at the same time. Busy requests return HTTP 503;
+invalid queries return HTTP 400, and missing or incorrect tokens return HTTP 401.
+Requests are limited to 4 KiB, responses to 64 KiB, and returned rows to 100. Larger responses fail rather than
+returning incomplete JSON. Queries use one thread, an 8 MB buffer limit, and no spilling. The HTTP task uses a
+64 KiB PSRAM stack. There is no query deadline, so expensive queries can keep the server busy until they finish.
+
+Stop the server with `query_server stop`. Starting it again creates a new token.
+The server uses unencrypted HTTP. Tokens and query results are visible to network observers; use only a trusted
+network, and do not expose port 8080 to the Internet. WebSockets and remote database writes are not supported.
+
+With a connected board, mounted SD card, saved Wi-Fi credentials, Internet access, and a host reachable from the
+board, run:
+
+```shell
+make check-network TTY=/dev/ttyACM0
+```
+
+The runner serves temporary CSV fixtures from the host, checks HTTP and HTTPS downloads, validates REST results
+and access controls, and checks memory across five server restarts. Its capture is under `build/hardware/network-*`.
+Successful runs remove their test files; failed runs retain them for inspection. A host firewall must allow the
+board to reach the runner's temporary HTTP port.
+
 ### Verification and Testing
 
 Host and hardware tests validate shell features:
@@ -177,7 +241,7 @@ SQL errors, incorrect results, firmware faults, and command timeouts fail the ru
 
 Logs, CSV reports, and a copy of the reference manifest and run settings are saved
 under `build/hardware/tpch-*`. Automatically created SD databases are removed after
-success and retained after failure for inspection. Existing files are never overwritten.
+success and retained after failure for inspection. TLS allocations use PSRAM. Existing files are never overwritten.
 The recorded digest identifies the host fixture; serial loading creates a new database
 with the same table contents, rather than copying its binary representation.
 The firmware defaults to one query thread and an 8 MB buffer limit with spilling disabled.
@@ -216,10 +280,10 @@ make check-dualcore TTY=/dev/ttyACM0
 ```
 
 This check runs five sessions with two independent scans of one million rows each.
-It compares aggregate results, switches between one and two query threads, and requires CPU 1 execution
+It compares aggregate results, switches between one and two query threads, and needs CPU 1 execution
 with a PSRAM stack before and after restarting the worker. Post-session memory
 checks use the same sustained-loss thresholds as the stress runner. Captures are
 saved under `build/hardware/dualcore-*`.
 
 The standalone probe remains configured for one thread. Small queries may use only
-one core, and parallel queries can require more buffer memory than single-threaded queries.
+one core, and parallel queries can need more buffer memory than single-threaded queries.
