@@ -8,6 +8,9 @@ import tempfile
 import unittest
 
 
+RUNNER = shlex.split(os.environ.get("TEST_RUNNER", ""))
+
+
 ROOT = Path(__file__).resolve().parents[1]
 STUBS = r'''
 #include <algorithm>
@@ -82,4 +85,4 @@ class AllocatorTests(unittest.TestCase):
             command += ["-std=c++17", "-DESP_PLATFORM", str(harness), "-o", str(binary)]
             command += shlex.split(os.environ.get("LDFLAGS", ""))
             subprocess.run(command, check=True)
-            subprocess.run([str(binary)], check=True)
+            subprocess.run([*RUNNER, str(binary)], check=True)

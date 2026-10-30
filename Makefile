@@ -11,11 +11,13 @@ STRESS_ARGS ?=
 TPCH_ARGS ?=
 TPCH_MANIFEST ?= build/tpch/manifest.json
 
+export CFLAGS CXXFLAGS SANFLAGS LDFLAGS TEST_RUNNER
+
 FORMAT_FILES := $(wildcard src/firmware/main/*.cpp src/firmware/shell/main/*.cpp src/firmware/shell/main/duckdb_console.h test/*.cpp)
 
 .PHONY: help clean clean-all submodules probe-build shell-build firmware-package shell-flash flash probe-flash console \
  check-shell check-probe check-stress check-network check-dualcore prepare-tpch check-tpch espidf-install test probe-test shell-test \
-  format lint setup-hooks test-hooks
+  asan ubsan memcheck format lint setup-hooks test-hooks
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' Makefile
@@ -93,6 +95,18 @@ espidf-install: ## Install the pinned ESP-IDF tools, Espressif Clang, and Python
 test: probe-test shell-test ## Run host portability, shell-path, and editor regression tests
 	$(PYTHON) -m unittest discover -s test -p 'test_*.py'
 
+asan: ## Run all host tests with AddressSanitizer and leak detection
+	ASAN_OPTIONS="$${ASAN_OPTIONS:-detect_leaks=1:halt_on_error=1}" $(MAKE) test \
+		SANFLAGS='-g -O1 -fno-omit-frame-pointer -fsanitize=address' TEST_RUNNER=
+
+ubsan: ## Run all host tests with UndefinedBehaviorSanitizer
+	UBSAN_OPTIONS="$${UBSAN_OPTIONS:-halt_on_error=1:print_stacktrace=1}" $(MAKE) test \
+		SANFLAGS='-g -O1 -fno-omit-frame-pointer -fsanitize=undefined' TEST_RUNNER=
+
+memcheck: ## Run native host test binaries under Valgrind (without sanitizers)
+	$(MAKE) test SANFLAGS= \
+		TEST_RUNNER='valgrind --quiet --leak-check=full --show-leak-kinds=all --errors-for-leak-kinds=definite,indirect,possible --error-exitcode=99'
+
 format: ## Format the project's firmware and host-test C++ code
 	clang-format -i $(FORMAT_FILES)
 
@@ -113,22 +127,22 @@ probe-test: ## Test the Unicode and math portability fixes on the host
 		git -C external/duckdb apply "$(CURDIR)/src/patches/duckdb-esp32p4.diff"; \
 	fi
 	mkdir -p build/test
-	$(CXX) -std=c++17 -Wall -Wextra -Iexternal/duckdb/third_party/utf8proc/include \
+	$(CXX) $(CXXFLAGS) $(SANFLAGS) -std=c++17 -Wall -Wextra -Iexternal/duckdb/third_party/utf8proc/include \
 		test/test_unicode.cpp external/duckdb/third_party/utf8proc/utf8proc.cpp \
-		-o build/test/test_unicode
-	build/test/test_unicode
-	$(CXX) -std=c++17 -Os -Wall -Wextra -fno-builtin-llroundl \
-		test/test_llroundl.cpp src/firmware/main/llroundl.cpp -o build/test/test_llroundl
-	build/test/test_llroundl
+		-o build/test/test_unicode $(LDFLAGS)
+	$(TEST_RUNNER) build/test/test_unicode
+	$(CXX) $(CXXFLAGS) $(SANFLAGS) -std=c++17 -Os -Wall -Wextra -fno-builtin-llroundl \
+		test/test_llroundl.cpp src/firmware/main/llroundl.cpp -o build/test/test_llroundl $(LDFLAGS)
+	$(TEST_RUNNER) build/test/test_llroundl
 
 shell-test: ## Run shell path, editor, completion, filesystem, and Wi-Fi helper host tests
 	mkdir -p build/test
-	$(CC) -std=c17 -Wall -Wextra -Isrc/firmware/shell/main \
+	$(CC) $(CFLAGS) $(SANFLAGS) -std=c17 -Wall -Wextra -Isrc/firmware/shell/main \
 		src/firmware/shell/test/test_path_util.c src/firmware/shell/main/path_util.c \
-		-o build/test/test_path_util
-	build/test/test_path_util
-	$(CC) -std=c17 -Wall -Wextra src/firmware/shell/test/test_editor.c -o build/test/test_editor
-	build/test/test_editor
+		-o build/test/test_path_util $(LDFLAGS)
+	$(TEST_RUNNER) build/test/test_path_util
+	$(CC) $(CFLAGS) $(SANFLAGS) -std=c17 -Wall -Wextra src/firmware/shell/test/test_editor.c -o build/test/test_editor $(LDFLAGS)
+	$(TEST_RUNNER) build/test/test_editor
 	$(PYTHON) -m unittest discover -s src/firmware/shell/test -p test_autocomplete.py
 	$(PYTHON) -m unittest discover -s src/firmware/shell/test -p test_filesystem.py
 	$(PYTHON) -m unittest discover -s src/firmware/shell/test -p test_wifi.py

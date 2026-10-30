@@ -8,6 +8,9 @@ import tempfile
 import unittest
 
 
+RUNNER = shlex.split(os.environ.get("TEST_RUNNER", ""))
+
+
 ROOT = Path(__file__).resolve().parents[4]
 TEST = Path(__file__).resolve().parent
 
@@ -49,6 +52,6 @@ class FilesystemTests(unittest.TestCase):
                     command += shlex.split(os.environ.get("LDFLAGS", ""))
                     built = subprocess.run(command, capture_output=True, text=True)
                     self.assertEqual(built.returncode, 0, built.stderr)
-                    result = subprocess.run([str(work / "filesystem")],
+                    result = subprocess.run([*RUNNER, str(work / "filesystem")],
                                             capture_output=True, text=True)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

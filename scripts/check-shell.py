@@ -52,11 +52,13 @@ try:
         wait_for(b"MicroSD card mounted at /sdcard")
         wait_for(b"msh> ")
         command("clear", b"\x1b[H\x1b[2J", b"msh> ")
+        time.sleep(0.1)  # Let linenoise distinguish this key from pasted input.
         port.write(b"\x0c")
         wait_for(b"\x1b[H\x1b[2J")
         wait_for(b"msh> ")
         port.write(b"duckdb\r")
         wait_for(b"duckdb> ")
+        time.sleep(0.1)  # Let linenoise distinguish this key from pasted input.
         port.write(b"\x0c")
         wait_for(b"\x1b[H\x1b[2J")
         wait_for(b"duckdb> ")

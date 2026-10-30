@@ -9,6 +9,9 @@ import tempfile
 import unittest
 
 
+RUNNER = shlex.split(os.environ.get("TEST_RUNNER", ""))
+
+
 ROOT = Path(__file__).resolve().parents[4]
 
 STUBS = r'''
@@ -123,7 +126,8 @@ class DuckDBConsoleTests(unittest.TestCase):
 
     def render(self, total, keys="", interactive=True, chunk_size=17, scenario="SELECT i"):
         result = subprocess.run(
-            [str(self.binary), str(total), str(chunk_size), str(int(interactive)), scenario],
+            [*RUNNER, str(self.binary),
+             str(total), str(chunk_size), str(int(interactive)), scenario],
             input=keys, capture_output=True, text=True, timeout=5)
         self.assertEqual(result.returncode, 0, result.stderr)
         output = result.stdout.replace("\x1b[K", "")
@@ -165,7 +169,7 @@ class DuckDBConsoleTests(unittest.TestCase):
                 self.assertEqual("(first 100 shown)" in output, total > 100)
 
     def test_large_result_stops_without_draining(self):
-        result = subprocess.run([str(self.binary), "1000000000", "2048", "0", "SELECT i"],
+        result = subprocess.run([*RUNNER, str(self.binary), "1000000000", "2048", "0", "SELECT i"],
                                 capture_output=True, text=True, timeout=5)
         self.assertEqual(result.returncode, 0)
         self.assertIn("100+ row(s)", result.stdout)
@@ -173,7 +177,7 @@ class DuckDBConsoleTests(unittest.TestCase):
 
     def test_multiple_and_empty_statements_never_execute(self):
         for sql in ("multiple", "empty"):
-            result = subprocess.run([str(self.binary), "1", "17", "0", sql],
+            result = subprocess.run([*RUNNER, str(self.binary), "1", "17", "0", sql],
                                     capture_output=True, text=True, timeout=5)
             self.assertEqual(result.returncode, 1)
             self.assertIn("Exactly one SQL statement", result.stdout)
@@ -181,7 +185,7 @@ class DuckDBConsoleTests(unittest.TestCase):
 
     def test_writes_drain_after_output_stops(self):
         for interactive, keys, shown in (("0", "", 100), ("1", "q", 25)):
-            result = subprocess.run([str(self.binary), "105", "17", interactive, "write"],
+            result = subprocess.run([*RUNNER, str(self.binary), "105", "17", interactive, "write"],
                                     input=keys, capture_output=True, text=True, timeout=5)
             self.assertEqual(result.returncode, 0)
             self.assertIn(f"105 row(s), 0 ms (first {shown} shown)", result.stdout)
@@ -195,7 +199,7 @@ class DuckDBConsoleTests(unittest.TestCase):
 
     def test_submission_and_midstream_errors(self):
         for scenario in ("submit_error", "fetch_error"):
-            result = subprocess.run([str(self.binary), "20", "17", "0", scenario],
+            result = subprocess.run([*RUNNER, str(self.binary), "20", "17", "0", scenario],
                                     capture_output=True, text=True, timeout=5)
             self.assertEqual(result.returncode, 1)
             self.assertIn("SQL error: test failure", result.stdout)
