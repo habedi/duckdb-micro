@@ -23,13 +23,58 @@ static void *test_realloc(void *ptr, size_t size)
   return fail_allocation() ? NULL : realloc(ptr, size);
 }
 
+#include <stdio.h>
+#include <unistd.h>
+static int short_write, close_failure, fat_rename, rename_call;
+static unsigned rename_failures;
+
+static size_t test_fwrite(const void *data, size_t size, size_t count, FILE *fp)
+{
+  if (short_write) {
+    errno = ENOSPC;
+    return 0;
+  }
+  return fwrite(data, size, count, fp);
+}
+
+static int test_fclose(FILE *fp)
+{
+  int result = fclose(fp);
+  if (close_failure) {
+    errno = EIO;
+    return EOF;
+  }
+  return result;
+}
+
+static int test_rename(const char *from, const char *to)
+{
+  rename_call++;
+  if (rename_failures & (1u << rename_call)) {
+    errno = EIO;
+    return -1;
+  }
+  if (fat_rename && access(to, F_OK) == 0) {
+    errno = EEXIST;
+    return -1;
+  }
+  return rename(from, to);
+}
+
 #define malloc test_malloc
 #define realloc test_realloc
+#define fwrite test_fwrite
+#define fclose test_fclose
+#define rename test_rename
 #include "../main/editor.c"
 #undef malloc
 #undef realloc
+#undef fwrite
+#undef fclose
+#undef rename
 
 #include <assert.h>
+#include <dirent.h>
 
 static void reset_editor(void)
 {
@@ -216,6 +261,75 @@ static void test_delete_at_end_of_buffer(const char *filename)
   clearerr(stdin);
 }
 
+static void test_save_preserves_original(const char *filename)
+{
+  reset_editor();
+  FILE *fp = fopen(filename, "w");
+  assert(fp && fputs("original\n", fp) >= 0 && fclose(fp) == 0);
+  strcpy(E.filename, filename);
+  assert(editorInsertRow(0, "replacement", 11));
+  for (int failure = 0; failure < 4; failure++) {
+    short_write = failure == 0;
+    close_failure = failure == 1;
+    fat_rename = failure == 3;
+    rename_call = 0;
+    rename_failures = 1u << (fat_rename ? 3 : 1);
+    assert(editorSave() == -1 && E.dirty != 0);
+    short_write = close_failure = 0;
+    char contents[32];
+    fp = fopen(filename, "r");
+    assert(fp && fgets(contents, sizeof(contents), fp));
+    assert(strcmp(contents, "original\n") == 0);
+    assert(fclose(fp) == 0);
+  }
+  rename_failures = 0;
+  rename_call = 0;
+  assert(editorSave() == 0 && E.dirty == 0);
+  assert(rename_call == 3);
+  fp = fopen(filename, "r");
+  char contents[32];
+  assert(fp && fgets(contents, sizeof(contents), fp));
+  assert(strcmp(contents, "replacement\n") == 0);
+  assert(fclose(fp) == 0);
+  fat_rename = 0;
+}
+
+static void test_save_keeps_backup_after_restore_failure(void)
+{
+  reset_editor();
+  char directory[] = "/tmp/editor-save-XXXXXX";
+  assert(mkdtemp(directory));
+  snprintf(E.filename, sizeof(E.filename), "%s/document", directory);
+  FILE *fp = fopen(E.filename, "w");
+  assert(fp && fputs("original\n", fp) >= 0 && fclose(fp) == 0);
+  assert(editorInsertRow(0, "replacement", 11));
+  fat_rename = 1;
+  rename_call = 0;
+  rename_failures = (1u << 3) | (1u << 4);
+  assert(editorSave() == -1 && E.dirty != 0);
+  assert(access(E.filename, F_OK) != 0);
+  DIR *dir = opendir(directory);
+  assert(dir);
+  struct dirent *entry;
+  int files = 0;
+  while ((entry = readdir(dir)) != NULL) {
+    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+    assert(strncmp(entry->d_name, ".msh-backup-", 12) == 0);
+    char path[512], contents[32];
+    snprintf(path, sizeof(path), "%s/%s", directory, entry->d_name);
+    fp = fopen(path, "r");
+    assert(fp && fgets(contents, sizeof(contents), fp));
+    assert(strcmp(contents, "original\n") == 0);
+    assert(fclose(fp) == 0);
+    assert(unlink(path) == 0);
+    files++;
+  }
+  assert(files == 1);
+  assert(closedir(dir) == 0 && rmdir(directory) == 0);
+  fat_rename = 0;
+  rename_failures = 0;
+}
+
 int main(void)
 {
   char filename[] = "/tmp/editor-test-XXXXXX";
@@ -230,6 +344,8 @@ int main(void)
   test_edit_allocation_failures();
   test_load_allocation_failures(filename);
   test_delete_at_end_of_buffer(filename);
+  test_save_preserves_original(filename);
+  test_save_keeps_backup_after_restore_failure();
   reset_editor();
   assert(unlink(filename) == 0);
   puts("Editor tests passed");

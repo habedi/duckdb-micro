@@ -100,7 +100,7 @@ class AutocompleteTests(unittest.TestCase):
         for name in ("CFLAGS", "SANFLAGS"):
             command += shlex.split(os.environ.get(name, ""))
         console = ROOT / "external/esp-idf/components/console"
-        command += ["-I" + str(work),
+        command += ["-std=c17", "-I" + str(work),
                     "-I" + str(console), "-I" + str(console / "linenoise"),
                     "-I" + str(ROOT / "src/firmware/shell/main"),
                     str(harness), str(ROOT / "src/firmware/shell/main/path_util.c"),

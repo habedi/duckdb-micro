@@ -7,10 +7,15 @@ TTY ?= $(DEFAULT_TTY)
 BAUD ?= 115200
 ESPTOOL_BAUD ?= 921600
 PYTHON ?= python3
+STRESS_ARGS ?=
+TPCH_ARGS ?=
+TPCH_MANIFEST ?= build/tpch/manifest.json
 
 FORMAT_FILES := $(wildcard src/firmware/main/*.cpp src/firmware/shell/main/*.cpp src/firmware/shell/main/duckdb_console.h test/*.cpp)
 
-.PHONY: help clean clean-all submodules probe-build shell-build firmware-package shell-flash flash probe-flash console check-shell check-probe espidf-install test probe-test shell-test format lint setup-hooks test-hooks
+.PHONY: help clean clean-all submodules probe-build shell-build firmware-package shell-flash flash probe-flash console \
+ check-shell check-probe check-stress check-network check-dualcore prepare-tpch check-tpch espidf-install test probe-test shell-test \
+  format lint setup-hooks test-hooks
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' Makefile
@@ -59,6 +64,21 @@ check-shell: ## Run hardware serial check for the shell (e.g. make check-shell [
 	source "$$IDF_PATH/export.sh" >/dev/null 2>&1; \
 	python scripts/check-shell.py $(TTY)
 
+check-stress: ## Stress SQL and storage, and record heap trends (STRESS_ARGS='--duration 28800' for overnight)
+	$(PYTHON) scripts/check-stress.py $(TTY) $(STRESS_ARGS)
+
+check-network: ## Verify HTTP/HTTPS downloads and authenticated REST queries over Wi-Fi
+	$(PYTHON) scripts/check-network.py $(TTY)
+
+check-dualcore: ## Verify CPU 1 query execution, PSRAM worker stacks, and worker teardown
+	$(PYTHON) scripts/check-dualcore.py $(TTY)
+
+prepare-tpch: ## Generate a small TPC-H database and host reference results (requires host DuckDB with tpch)
+	$(PYTHON) scripts/check-tpch.py prepare $(TPCH_ARGS)
+
+check-tpch: ## Prepare, load over serial, and benchmark a small TPC-H database on the SD card
+	$(PYTHON) scripts/check-tpch.py run $(TTY) "$(TPCH_MANIFEST)" $(TPCH_ARGS)
+
 check-probe: ## Run hardware serial check for standalone probe (e.g. make check-probe [TTY=/dev/ttyACM0])
 	@export IDF_PATH="$${IDF_PATH:-$(CURDIR)/external/esp-idf}"; \
 	export IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}"; \
@@ -103,12 +123,11 @@ probe-test: ## Test the Unicode and math portability fixes on the host
 
 shell-test: ## Run shell path, editor, completion, filesystem, and Wi-Fi helper host tests
 	mkdir -p build/test
-	$(CC) -std=c11 -Wall -Wextra -Isrc/firmware/shell/main \
+	$(CC) -std=c17 -Wall -Wextra -Isrc/firmware/shell/main \
 		src/firmware/shell/test/test_path_util.c src/firmware/shell/main/path_util.c \
 		-o build/test/test_path_util
 	build/test/test_path_util
-	$(CC) -std=c11 -Wall -Wextra src/firmware/shell/test/test_editor.c \
-		-o build/test/test_editor
+	$(CC) -std=c17 -Wall -Wextra src/firmware/shell/test/test_editor.c -o build/test/test_editor
 	build/test/test_editor
 	$(PYTHON) -m unittest discover -s src/firmware/shell/test -p test_autocomplete.py
 	$(PYTHON) -m unittest discover -s src/firmware/shell/test -p test_filesystem.py

@@ -6,10 +6,11 @@
 
 ---
 
-DuckDB Micro is an experimental DuckDB 2.0 port to ESP32-P4 (more specifically, the [Waveshare ESP32-P4-WIFI6](https://www.waveshare.com/wiki/ESP32-P4-WIFI6) board; see image below).
+DuckDB Micro is an experimental (and partial) port of DuckDB 2.0 to ESP32-P4 (more specifically,
+the [Waveshare ESP32-P4-WIFI6](https://www.waveshare.com/wiki/ESP32-P4-WIFI6) board; see image below).
 
 <div align="center">
-  <img alt="MicroShell" src="docs/assets/images/esp32-p4-wifi6.png" width="40%">
+  <img alt="Waveshare ESP32-P4-WIFI6" src="docs/assets/images/esp32-p4-wifi6.png" width="40%">
 </div>
 
 ### Why?
@@ -18,7 +19,20 @@ DuckDB normally needs at least 125 MB of RAM per thread to work properly, and it
 This project is an attempt to see how much of DuckDB's functionality can be made available on a low-resource device like an ESP32 microcontroller that
 lacks a lot of conventional features like a lot of (fast) memory, a full-featured virtual memory system, etc.
 
-See the [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
+### Feature Comparisons
+
+| Feature           | DuckDB                                    | DuckDB Micro                           |
+|-------------------|-------------------------------------------|----------------------------------------|
+| Platform          | Desktop and server                        | ESP32-P4 (FreeRTOS)                    |
+| Query parallelism | Multi-core                                | Single thread (up to 2)                |
+| Buffer memory     | Host RAM (configurable)                   | 8 MB (PSRAM)                           |
+| Disk spilling     | Supported                                 | Disabled                               |
+| Data formats      | CSV, JSON, Parquet, and more              | CSV, JSON, and Parquet                 |
+| Extensions        | Supported                                 | Core functions, JSON, and Parquet only |
+| Remote files      | Direct over HTTP(S) access (via `httpfs`) | Download to local storage first        |
+| User interface    | CLI and language APIs                     | MicroShell and optional REST API       |
+
+See [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
 
 **This project is very experimental.
 You can download the latest pre-built firmware from the [releases page](https://github.com/habedi/duckdb-micro/releases).**
@@ -28,8 +42,8 @@ You can download the latest pre-built firmware from the [releases page](https://
 ### Quickstart
 
 To follow the steps below, you need to have Git and [Nix](https://nixos.org/download/) (with flakes enabled) installed on your machine.
-The instructions are tested on Linux, and the firmware is tested on an ESP32-P4-WIFI6 board with silicon revision v1.3 with 32 MB PSRAM and 32 MB
-NOR flash.
+The instructions are tested on Linux, and the firmware is tested on an ESP32-P4-WIFI6 board (silicon revision v1.3, 32 MB PSRAM, and 32 MB
+NOR flash).
 
 #### 1. Clone the repository
 
@@ -50,6 +64,8 @@ nix develop
 make espidf-install
 make shell-build # This may take a while
 ```
+
+MicroShell is the name of the shell environment that runs on the board after flashing it.
 
 #### 4. Flash the board
 
@@ -73,7 +89,7 @@ Press Enter twice after opening the console to get to the MicroShell (`msh>`) pr
 
 > [!NOTE]
 > Serial port access needs membership in the `dialout` group (which can be set up with something like `sudo usermod -aG dialout $USER`).
-> Also, change `ttyACM0` to the appropriate serial port for your system, if needed.
+> Also, change `/dev/ttyACM0` to the appropriate serial port for your system, if needed.
 
 ---
 

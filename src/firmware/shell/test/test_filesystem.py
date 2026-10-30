@@ -40,7 +40,7 @@ class FilesystemTests(unittest.TestCase):
                     command = shlex.split(os.environ.get("CC", "cc"))
                     for name in ("CFLAGS", "SANFLAGS"):
                         command += shlex.split(os.environ.get(name, ""))
-                    command += ["-I" + str(work), "-I" + str(fatfs),
+                    command += ["-std=c17", "-I" + str(work), "-I" + str(fatfs),
                                 "-I" + str(TEST.parent / "main"),
                                 f"-DCONFIG_IDF_TARGET_{board}=1", str(TEST / "test_filesystem.c"),
                                 str(TEST.parent / "main/path_util.c"),

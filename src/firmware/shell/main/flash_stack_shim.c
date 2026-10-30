@@ -79,6 +79,11 @@ static esp_err_t ensure_worker_started(void)
     return ESP_OK;
 }
 
+esp_err_t flash_stack_shim_init(void)
+{
+    return ensure_worker_started();
+}
+
 static esp_err_t dispatch_to_worker(enum flash_op op, const esp_partition_t *partition,
                                      size_t offset, void *buffer, size_t size)
 {

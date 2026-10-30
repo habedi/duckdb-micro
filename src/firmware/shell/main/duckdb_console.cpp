@@ -1,28 +1,36 @@
 #include "duckdb_console.h"
 
+#include <atomic>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
 
 #include "duckdb.hpp"
+#include "duckdb/main/query_result_stream.hpp"
+#include "duckdb/parser/sql_statement.hpp"
 #include "duckdb_static_extension.h"
 #include "esp_console.h"
 #include "esp_heap_caps.h"
+#include "esp_pthread.h"
 #include "esp_rom_sys.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
 #include "freertos/task.h"
 #include "linenoise/linenoise.h"
+#include "network_json.h"
 
 extern "C" int32_t duckdb_extension_core_functions_describe(duckdb_extension_descriptor*);
 extern "C" int32_t duckdb_extension_parquet_describe(duckdb_extension_descriptor*);
 extern "C" int32_t duckdb_extension_json_describe(duckdb_extension_descriptor*);
 extern "C" bool shell_resolve_arg(const char* cmd, const char* in, char* out, size_t out_len);
 extern "C" void shell_restore_linenoise_callbacks(void);
+extern "C" esp_err_t flash_stack_shim_init(void);
 
 namespace {
+std::atomic_flag sql_busy = ATOMIC_FLAG_INIT;
+
 struct Request {
     const char* db_path;
     const char* sql;
@@ -91,8 +99,23 @@ void sql_task(void* argument) {
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
     try {
+        // Initialize the shared flash worker before either query core can use it.
+        if (flash_stack_shim_init() != ESP_OK) {
+            throw std::runtime_error("Cannot initialize DuckDB flash worker");
+        }
+        auto worker = esp_pthread_get_default_config();
+        worker.stack_size = 65536;
+        worker.stack_alloc_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
+        worker.pin_to_core = 1;
+        worker.prio = 1;
+        worker.thread_name = "duckdb_worker";
+        worker.inherit_cfg = true;
+        if (esp_pthread_set_cfg(&worker) != ESP_OK) {
+            throw std::runtime_error("Cannot configure DuckDB worker stack");
+        }
         duckdb::DBConfig config;
         config.SetOptionByName("threads", duckdb::Value("1"));
+        config.SetOptionByName("async_threads", duckdb::Value("0"));
         config.SetOptionByName("memory_limit", duckdb::Value("8MB"));
         config.SetOptionByName("temp_directory", duckdb::Value(""));
         duckdb::DuckDB database(request.db_path, &config);
@@ -197,17 +220,97 @@ int command(int argc, char** argv) {
         }
         db_path = resolved_path;
     }
+    if (sql_busy.test_and_set()) {
+        printf("duckdb: SQL engine is busy\n");
+        return 1;
+    }
     Request request{db_path, sql, xTaskGetCurrentTaskHandle(), 1};
     // Keep scarce internal RAM available for DuckDB's mutexes and device drivers.
     if (xTaskCreatePinnedToCoreWithCaps(sql_task, "duckdb", 65536, &request, 1, nullptr, 0,
                                         MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
+        sql_busy.clear();
         printf("duckdb: cannot allocate SQL task stack\n");
         return 1;
     }
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    sql_busy.clear();
     return request.status;
 }
 }  // namespace
+
+extern "C" int duckdb_remote_query(const char* path, const char* sql, char* output,
+                                   size_t capacity) {
+    heap_caps_malloc_extmem_enable(0);
+    if (sql_busy.test_and_set()) {
+        return 503;
+    }
+    int status = 400;
+    try {
+        if (flash_stack_shim_init() != ESP_OK) {
+            throw std::runtime_error("Cannot initialize flash worker");
+        }
+        duckdb::DBConfig config;
+        config.SetOptionByName("threads", duckdb::Value("1"));
+        config.SetOptionByName("async_threads", duckdb::Value("0"));
+        config.SetOptionByName("memory_limit", duckdb::Value("8MB"));
+        config.SetOptionByName("temp_directory", duckdb::Value(""));
+        config.SetOptionByName("access_mode", duckdb::Value("READ_ONLY"));
+        config.SetOptionByName("enable_external_access", duckdb::Value::BOOLEAN(false));
+        duckdb::DuckDB database(path, &config);
+        duckdb::Connection connection(database);
+        auto statements = connection.ExtractStatements(sql);
+        if (statements.size() != 1 ||
+            statements[0]->type != duckdb::StatementType::SELECT_STATEMENT) {
+            throw std::runtime_error("Exactly one SELECT statement is required");
+        }
+        duckdb::QueryResultStream<> result(connection.Submit(std::move(statements[0])));
+        auto chunk = result.Fetch();
+        if (result.HasError()) {
+            throw std::runtime_error(result.GetError());
+        }
+        NetworkJson json(output, capacity);
+        json.append("{\"columns\":[");
+        bool first = true;
+        for (const auto& name : result.GetNames()) {
+            if (!first) json.append(",");
+            json.string(name.c_str());
+            first = false;
+        }
+        json.append("],\"rows\":[");
+        size_t shown = 0;
+        bool truncated = false;
+        while (chunk && chunk->size() != 0) {
+            for (duckdb::idx_t row = 0; row < chunk->size(); ++row, ++shown) {
+                if (shown == 100) {
+                    truncated = true;
+                    break;
+                }
+                if (shown) json.append(",");
+                json.append("[");
+                for (duckdb::idx_t col = 0; col < chunk->ColumnCount(); ++col) {
+                    if (col) json.append(",");
+                    auto value = chunk->GetValue(col, row);
+                    if (value.IsNull())
+                        json.append("null");
+                    else
+                        json.string(value.ToString());
+                }
+                json.append("]");
+            }
+            if (truncated) break;
+            chunk = result.Fetch();
+        }
+        if (result.HasError()) throw std::runtime_error(result.GetError());
+        json.append(truncated ? "],\"truncated\":true}" : "],\"truncated\":false}");
+        status = 200;
+    } catch (const std::exception& error) {
+        // Keep errors bounded, including when the response itself exceeds the cap.
+        snprintf(output, capacity, "{\"error\":\"Query failed or response limit exceeded\"}");
+        printf("query_server: %s\n", error.what());
+    }
+    sql_busy.clear();
+    return status;
+}
 
 extern "C" void duckdb_console_register(void) {
     ESP_ERROR_CHECK(heap_caps_register_failed_alloc_callback(

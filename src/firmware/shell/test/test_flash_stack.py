@@ -74,6 +74,9 @@ int main(void)
     assert(s_worker_mutex && !s_worker_task);
     assert(takes == 0 && notifications == 0 && direct_calls == 0);
     fail_task = false;
+    assert(flash_stack_shim_init() == ESP_OK);
+    assert(flash_stack_shim_init() == ESP_OK);
+    assert(s_worker_task && takes == 0 && notifications == 0);
     assert(__wrap_esp_partition_erase_range(NULL, 0, 0) == ESP_OK);
     assert(takes == 1 && notifications == 1 && direct_calls == 0);
     assert(s_worker_task && !s_current_req);
@@ -92,7 +95,7 @@ class FlashStackTests(unittest.TestCase):
             binary = Path(directory) / "flash"
             harness.write_text(STUBS + source + CHECKS)
             command = shlex.split(os.environ.get("CC", "cc"))
-            command += ["-std=c11", "-Wall", "-Wextra", "-Werror", str(harness), "-o", str(binary)]
+            command += ["-std=c17", "-Wall", "-Wextra", "-Werror", str(harness), "-o", str(binary)]
             subprocess.run(command, check=True)
             subprocess.run([str(binary)], check=True)
 

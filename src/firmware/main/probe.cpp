@@ -67,6 +67,7 @@ static void run_probe(void*) {
             duckdb::DBConfig config;
             memory("after config constructor");
             config.SetOptionByName("threads", duckdb::Value("1"));
+            config.SetOptionByName("async_threads", duckdb::Value("0"));
             memory("after threads setting");
             config.SetOptionByName("memory_limit", duckdb::Value("8MB"));
             config.SetOptionByName("temp_directory", duckdb::Value(""));

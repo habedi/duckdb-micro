@@ -72,13 +72,13 @@ jobs:
         uses: cachix/install-nix-action@v31
 
       - name: Cache ESP-IDF tools
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: build/espressif
           key: esp-idf-nix-${{ runner.arch }}-${{ steps.idf.outputs.revision }}-${{ hashFiles('flake.nix', 'flake.lock') }}-v1
 
       - name: Cache compiled objects
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: build/ccache
           key: firmware-ubuntu-24.04-${{ runner.arch }}-${{ steps.idf.outputs.revision }}-${{ github.sha }}

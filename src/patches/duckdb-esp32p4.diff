@@ -406,35 +406,36 @@ index b34970e7718..9623d10897b 100644
  	}
  	if (key == "format") {
 diff --git a/src/common/allocator/allocator_standard.cpp b/src/common/allocator/allocator_standard.cpp
-index d74816ed1ab..572e915ec6c 100644
+index d74816ed1ab..f7c43aede53 100644
 --- a/src/common/allocator/allocator_standard.cpp
 +++ b/src/common/allocator/allocator_standard.cpp
-@@ -5,6 +5,10 @@
+@@ -5,6 +5,11 @@
  #include "duckdb/common/assert.hpp"
  #include "duckdb/common/exception.hpp"
  #include "duckdb/common/helper.hpp"
 +#ifdef ESP_PLATFORM
 +#include <cstddef>
 +#include <cstdlib>
++#include "esp_heap_caps.h"
 +#endif
 
  #ifdef DUCKDB_DEBUG_ALLOCATION
  #include "duckdb/common/mutex.hpp"
-@@ -17,7 +21,13 @@
+@@ -17,7 +22,13 @@
  namespace duckdb {
 
  data_ptr_t Allocator::DefaultAllocate(PrivateAllocatorData *private_data, idx_t size) {
 +#ifdef ESP_PLATFORM
-+	// ESP-IDF's ordinary heap allocations can be only four-byte aligned; aligned_alloc
-+	// routes through heap_caps_aligned_alloc_default so it honors heap_caps_malloc_extmem_enable.
-+	auto default_allocate_result = aligned_alloc(alignof(std::max_align_t), size);
++	// Do not fall back to scarce internal SRAM when PSRAM is exhausted.
++	auto default_allocate_result = heap_caps_aligned_alloc(alignof(std::max_align_t), size,
++	                                                       MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 +#else
  	auto default_allocate_result = malloc(size);
 +#endif
  	if (!default_allocate_result) {
  		throw std::bad_alloc();
  	}
-@@ -30,7 +40,20 @@ void Allocator::DefaultFree(PrivateAllocatorData *private_data, data_ptr_t point
+@@ -30,7 +41,20 @@ void Allocator::DefaultFree(PrivateAllocatorData *private_data, data_ptr_t point
 
  data_ptr_t Allocator::DefaultReallocate(PrivateAllocatorData *private_data, data_ptr_t pointer, idx_t old_size,
                                          idx_t size) {
@@ -522,7 +523,7 @@ index 62a7b2b8f5d..fdfb0bcab6b 100644
 
  optional_idx FileSystem::GetAvailableDiskSpace(const string &path) {
 diff --git a/src/common/local_file_system.cpp b/src/common/local_file_system.cpp
-index 664659e76aa..add337f4678 100644
+index 664659e76aa..8bfeef03476 100644
 --- a/src/common/local_file_system.cpp
 +++ b/src/common/local_file_system.cpp
 @@ -30,7 +30,9 @@
@@ -567,43 +568,15 @@ index 664659e76aa..add337f4678 100644
  }
 
  unique_ptr<FileHandle> LocalFileSystem::OpenFile(const string &path_p, FileOpenFlags flags,
-@@ -422,6 +432,35 @@ unique_ptr<FileHandle> LocalFileSystem::OpenFile(const string &path_p, FileOpenF
+@@ -422,6 +432,7 @@ unique_ptr<FileHandle> LocalFileSystem::OpenFile(const string &path_p, FileOpenF
  		open_flags |= O_EXCL;
  	}
 
-+#ifdef ESP_PLATFORM
-+	// ESP-IDF 6.1 VFS expects picolibc fcntl flag values:
-+	// O_RDONLY = 0, O_WRONLY = 1, O_RDWR = 2
-+	// O_CREAT = 0x0040, O_TRUNC = 0x0200, O_APPEND = 0x0400, O_EXCL = 0x0800
-+	int vfs_open_flags = 0;
-+	if (open_read && open_write) {
-+		vfs_open_flags = 2; // O_RDWR
-+	} else if (open_read) {
-+		vfs_open_flags = 0; // O_RDONLY
-+	} else if (open_write) {
-+		vfs_open_flags = 1; // O_WRONLY
-+	}
-+	if (open_write) {
-+		if (flags.CreateFileIfNotExists() || flags.OverwriteExistingFile()) {
-+			vfs_open_flags |= 0x0040; // O_CREAT
-+		}
-+		if (flags.OverwriteExistingFile() && !flags.OpenForAppending()) {
-+			vfs_open_flags |= 0x0200; // O_TRUNC
-+		}
-+		if (flags.OpenForAppending()) {
-+			vfs_open_flags |= 0x0400; // O_APPEND
-+		}
-+	}
-+	if (flags.ExclusiveCreate() || flags.CreatePrivateFile()) {
-+		vfs_open_flags |= 0x0800; // O_EXCL
-+	}
-+	open_flags = vfs_open_flags;
-+#endif
 +
  	// Open the file
  	ApplyLocalFileSystemDelay(opener);
  	int fd = open(path.c_str(), open_flags, filesec);
-@@ -830,7 +869,8 @@ void LocalFileSystem::FileSync(FileHandle &handle) {
+@@ -830,7 +841,8 @@ void LocalFileSystem::FileSync(FileHandle &handle) {
  	}
  #endif // F_FULLFSYNC
 
@@ -613,7 +586,7 @@ index 664659e76aa..add337f4678 100644
  	bool sync_success = ::fdatasync(fd) == 0;
  #else
  	bool sync_success = ::fsync(fd) == 0;
-@@ -854,10 +894,21 @@ void LocalFileSystem::MoveFile(const string &source, const string &target, optio
+@@ -854,10 +866,21 @@ void LocalFileSystem::MoveFile(const string &source, const string &target, optio
  	auto normalized_source = ExpandPath(source, opener);
  	auto normalized_target = ExpandPath(target, opener);
  	//! FIXME: rename does not guarantee atomicity or overwriting target file if it exists
@@ -635,7 +608,7 @@ index 664659e76aa..add337f4678 100644
  }
 
  std::string LocalFileSystem::GetLastErrorAsString() {
-@@ -889,6 +940,12 @@ string LocalFileSystem::MakePathAbsolute(const string &path_p, optional_ptr<File
+@@ -889,6 +912,12 @@ string LocalFileSystem::MakePathAbsolute(const string &path_p, optional_ptr<File
  //===----------------------------------------------------------------------===//
  // Memory-mapped files (Unix)
  //===----------------------------------------------------------------------===//
@@ -648,7 +621,7 @@ index 664659e76aa..add337f4678 100644
  class UnixMemoryMappedFile : public MemoryMappedFile {
  public:
  	UnixMemoryMappedFile(string path_p, FileOpenFlags flags_p, int fd_p, data_ptr_t data_p, idx_t size_p);
-@@ -1021,6 +1078,7 @@ unique_ptr<MemoryMappedFile> LocalFileSystem::MemoryMapFile(const OpenFileInfo &
+@@ -1021,6 +1050,7 @@ unique_ptr<MemoryMappedFile> LocalFileSystem::MemoryMapFile(const OpenFileInfo &
 
  	return make_uniq<UnixMemoryMappedFile>(path, flags, fd, data, mapping_size);
  }
@@ -656,7 +629,7 @@ index 664659e76aa..add337f4678 100644
 
  #else
 
-@@ -2101,7 +2159,10 @@ static bool IsCrawl(const string &glob) {
+@@ -2101,7 +2131,10 @@ static bool IsCrawl(const string &glob) {
  }
 
  static bool IsSymbolicLink(const string &path) {
@@ -718,6 +691,42 @@ index 61e3965e4fc..4cc6292e5d4 100644
  	} else if (week >= 52 && date >= GetISOWeekOne(year + 1)) {
  		++year;
  		week = 0;
+diff --git a/src/common/types/row/tuple_data_allocator.cpp b/src/common/types/row/tuple_data_allocator.cpp
+index fb1ead6960c..78a32b4e79f 100644
+--- a/src/common/types/row/tuple_data_allocator.cpp
++++ b/src/common/types/row/tuple_data_allocator.cpp
+@@ -191,7 +191,8 @@ void TupleDataAllocator::Build(TupleDataSegment &segment, TupleDataPinState &pin
+ 		idx_t offset = 0;
+ 		while (offset != append_count) {
+ 			if (chunks.empty() || chunks.back()->count == STANDARD_VECTOR_SIZE) {
+-				chunks.push_back(stl_allocator->MakeUnsafePtr<TupleDataChunk>(*stl_allocator->Make<mutex>()));
++				auto chunk_lock = stl_allocator->MakePtr<mutex>();
++				chunks.push_back(stl_allocator->MakeUnsafePtr<TupleDataChunk>(std::move(chunk_lock)));
+ 			}
+ 			auto &chunk = *chunks.back();
+
+diff --git a/src/common/types/row/tuple_data_segment.cpp b/src/common/types/row/tuple_data_segment.cpp
+index f1d77a6b1b1..e047d3a5847 100644
+--- a/src/common/types/row/tuple_data_segment.cpp
++++ b/src/common/types/row/tuple_data_segment.cpp
+@@ -18,12 +18,17 @@ void TupleDataChunkPart::SetHeapEmpty() {
+ TupleDataChunk::TupleDataChunk(mutex &lock_p) : count(0), lock(lock_p) {
+ }
+
++TupleDataChunk::TupleDataChunk(arena_ptr<mutex> lock_p) : TupleDataChunk(*lock_p) {
++	owned_lock = std::move(lock_p);
++}
++
+ static inline void SwapTupleDataChunk(TupleDataChunk &a, TupleDataChunk &b) noexcept {
+ 	std::swap(a.part_ids, b.part_ids);
+ 	std::swap(a.row_block_ids, b.row_block_ids);
+ 	std::swap(a.heap_block_ids, b.heap_block_ids);
+ 	std::swap(a.count, b.count);
+ 	std::swap(a.lock, b.lock);
++	std::swap(a.owned_lock, b.owned_lock);
+ }
+
+ TupleDataChunk::TupleDataChunk(TupleDataChunk &&other) noexcept : count(0), lock(other.lock) {
 diff --git a/src/include/duckdb/common/hugeint.hpp b/src/include/duckdb/common/hugeint.hpp
 index 8441065069b..a24e585f408 100644
 --- a/src/include/duckdb/common/hugeint.hpp
@@ -838,6 +847,27 @@ index ccf773c5c73..b02811fe8d3 100644
  namespace duckdb {
  using std::thread;
  using thread_id = std::thread::id;
+diff --git a/src/include/duckdb/common/types/row/tuple_data_segment.hpp b/src/include/duckdb/common/types/row/tuple_data_segment.hpp
+index 199bafea38c..640c47e7bcb 100644
+--- a/src/include/duckdb/common/types/row/tuple_data_segment.hpp
++++ b/src/include/duckdb/common/types/row/tuple_data_segment.hpp
+@@ -115,6 +115,7 @@ private:
+ struct TupleDataChunk {
+ public:
+ 	explicit TupleDataChunk(mutex &lock_p);
++	explicit TupleDataChunk(arena_ptr<mutex> lock_p);
+
+ 	//! Disable copy constructors
+ 	TupleDataChunk(const TupleDataChunk &other) = delete;
+@@ -143,6 +144,8 @@ public:
+ 	idx_t count;
+ 	//! Lock for recomputing heap pointers
+ 	reference<mutex> lock;
++	//! Releases platform mutex resources before the arena storage is reclaimed.
++	arena_ptr<mutex> owned_lock;
+ };
+
+ struct TupleDataSegment {
 diff --git a/src/include/duckdb/common/types/value.hpp b/src/include/duckdb/common/types/value.hpp
 index 7dcfca9377d..64bd32c0f57 100644
 --- a/src/include/duckdb/common/types/value.hpp
@@ -892,15 +922,45 @@ index ac7658fc50a..4d0455d4bc4 100644
  	if (getrlimit(RLIMIT_NOFILE, &limit) != 0 || limit.rlim_cur == RLIM_INFINITY) {
  		return optional_idx();
 diff --git a/src/parallel/task_scheduler.cpp b/src/parallel/task_scheduler.cpp
-index a4106a02057..7649453abbf 100644
 --- a/src/parallel/task_scheduler.cpp
 +++ b/src/parallel/task_scheduler.cpp
-@@ -359,7 +359,7 @@ void TaskScheduler::YieldThread() {
+@@ -8,6 +8,12 @@
+ #include "duckdb/parallel/task_scheduler_pool.hpp"
+ #include "duckdb/parallel/task_scheduler_queue.hpp"
+ #include "duckdb/storage/block_allocator.hpp"
++#ifdef ESP_PLATFORM
++#include "esp_log.h"
++#include "esp_memory_utils.h"
++#include "freertos/FreeRTOS.h"
++#include "freertos/task.h"
++#endif
+ #ifndef DUCKDB_NO_THREADS
+ #include "concurrentqueue.h"
+ #include "duckdb/common/thread.hpp"
+@@ -120,6 +126,15 @@
+ bool TaskScheduler::TryDequeueAndProcessTask(const DBConfig &config, TaskSchedulerQueue &queue, ConsumerToken &consumer,
+                                              shared_ptr<Task> &task) {
+ 	if (queue.Dequeue(consumer, task)) {
++#ifdef ESP_PLATFORM
++		static thread_local bool reported = false;
++		if (!reported) {
++			char stack_probe;
++			ESP_LOGI("duckdb_worker", "Query worker: CPU %d, PSRAM stack %s", xPortGetCoreID(),
++			         esp_ptr_external_ram(&stack_probe) ? "yes" : "no");
++			reported = true;
++		}
++#endif
+ 		auto process_mode = TaskExecutionMode::PROCESS_ALL;
+ 		if (Settings::Get<SchedulerProcessPartialSetting>(config)) {
+ 			process_mode = TaskExecutionMode::PROCESS_PARTIAL;
+@@ -359,7 +374,9 @@
  }
 
  idx_t TaskScheduler::GetEstimatedCPUId() {
 -#if defined(__EMSCRIPTEN__)
-+#if defined(__EMSCRIPTEN__) || defined(DUCKDB_NO_THREADS)
++#if defined(ESP_PLATFORM)
++	return xPortGetCoreID();
++#elif defined(__EMSCRIPTEN__) || defined(DUCKDB_NO_THREADS)
  	// FIXME: Wasm + multithreads can likely be implemented as
  	//   return return (idx_t)std::hash<std::thread::id>()(std::this_thread::get_id());
  	return 0;
@@ -1057,3 +1117,151 @@ index fc4d18b2e48..9434a7aad46 100644
              state->v1 = XXH32_round(state->v1, XXH_readLE32(p32, endian)); p32++;
              state->v2 = XXH32_round(state->v2, XXH_readLE32(p32, endian)); p32++;
              state->v3 = XXH32_round(state->v3, XXH_readLE32(p32, endian)); p32++;
+diff --git a/src/main/config.cpp b/src/main/config.cpp
+--- a/src/main/config.cpp
++++ b/src/main/config.cpp
+@@ -681,7 +681,9 @@
+ }
+
+ idx_t DBConfig::GetSystemMaxThreads(FileSystem &fs) {
+-#ifdef DUCKDB_NO_THREADS
++#if defined(ESP_PLATFORM)
++	return 2;
++#elif defined(DUCKDB_NO_THREADS)
+ 	return 1;
+ #else
+ 	idx_t physical_cores = std::thread::hardware_concurrency();
+@@ -700,7 +702,7 @@
+ }
+
+ idx_t DBConfig::GetSystemMaxAsyncThreads(FileSystem &fs) {
+-#ifdef DUCKDB_NO_THREADS
++#if defined(DUCKDB_NO_THREADS) || defined(ESP_PLATFORM)
+ 	return 0;
+ #else
+ 	return MinValue<idx_t>(4 * GetSystemMaxThreads(fs), 256);
+diff --git a/src/main/settings/custom_settings.cpp b/src/main/settings/custom_settings.cpp
+--- a/src/main/settings/custom_settings.cpp
++++ b/src/main/settings/custom_settings.cpp
+@@ -1057,6 +1057,11 @@
+ 		throw InvalidInputException("external_threads must be a positive integer");
+ 	}
+ 	auto new_external_threads = input.GetValue<uint64_t>();
++#ifdef ESP_PLATFORM
++	if (new_external_threads != 1) {
++		throw InvalidInputException("ESP32-P4 requires one external query thread");
++	}
++#endif
+ 	if (info.db) {
+ 		TaskScheduler::GetScheduler(*info.db).SetThreads(info.config.options.maximum_threads, new_external_threads);
+ 	}
+@@ -1737,6 +1742,11 @@
+ 	if (new_val < 1) {
+ 		throw SyntaxException("Must have at least 1 thread!");
+ 	}
++#ifdef ESP_PLATFORM
++	if (new_val > 2) {
++		throw InvalidInputException("ESP32-P4 supports at most two query threads");
++	}
++#endif
+ 	auto new_maximum_threads = NumericCast<idx_t>(new_val);
+ 	if (db) {
+ 		TaskScheduler::GetScheduler(*db).SetThreads(new_maximum_threads, Settings::Get<ExternalThreadsSetting>(config));
+@@ -1775,6 +1785,11 @@
+ 	if (new_val < 0) {
+ 		throw SyntaxException("Cannot have negative async_threads!");
+ 	}
++#ifdef ESP_PLATFORM
++	if (new_val != 0) {
++		throw InvalidInputException("ESP32-P4 does not support async query workers");
++	}
++#endif
+ 	auto new_async_threads = NumericCast<idx_t>(new_val);
+ 	if (db) {
+ 		TaskScheduler::GetScheduler(*db).SetAsyncThreads(new_async_threads);
+diff --git a/third_party/concurrentqueue/lightweightsemaphore.h b/third_party/concurrentqueue/lightweightsemaphore.h
+--- a/third_party/concurrentqueue/lightweightsemaphore.h
++++ b/third_party/concurrentqueue/lightweightsemaphore.h
+@@ -9,6 +9,7 @@
+ #include <atomic>
+ #include <cassert>
+ #include <type_traits> // For std::make_signed<T>
++#include <new>
+
+ // VS2012 doesn't support deleted functions.
+ // In this case, we declare the function normally but don't define it.
+@@ -35,7 +36,7 @@
+ }
+ #elif defined(__MACH__)
+ #include <mach/mach.h>
+-#elif defined(__unix__)
++#elif defined(__unix__) || defined(ESP_PLATFORM)
+ #include <semaphore.h>
+ #include <chrono>
+ #elif defined(__MVS__)
+@@ -174,7 +175,7 @@
+ 		}
+ 	}
+ };
+-#elif defined(__unix__) || defined(__MVS__)
++#elif defined(__unix__) || defined(__MVS__) || defined(ESP_PLATFORM)
+ //---------------------------------------------------------
+ // Semaphore (POSIX, Linux, zOS aka MVS)
+ //---------------------------------------------------------
+@@ -191,6 +192,11 @@
+ 	{
+ 		assert(initialCount >= 0);
+ 		int rc = sem_init(&m_sema, 0, initialCount);
++#ifdef ESP_PLATFORM
++		if (rc != 0) {
++			throw std::bad_alloc();
++		}
++#endif
+ 		assert(rc == 0);
+ 		(void)rc;
+ 	}
+diff --git a/src/parallel/task_scheduler_pool.cpp b/src/parallel/task_scheduler_pool.cpp
+--- a/src/parallel/task_scheduler_pool.cpp
++++ b/src/parallel/task_scheduler_pool.cpp
+@@ -204,9 +204,13 @@
+ 					SetThreadAffinity(*worker_thread, available_cpus, threads.size());
+ 				}
+ 			} catch (std::exception &ex) {
++#ifdef ESP_PLATFORM
++				throw;
++#else
+ 				// thread constructor failed - this can happen when the system has too many threads allocated
+ 				// in this case we cannot allocate more threads - stop launching them
+ 				break;
++#endif
+ 			}
+ 			auto thread_wrapper = make_uniq<TaskSchedulerThread>(std::move(worker_thread));
+
+diff --git a/src/parallel/task_scheduler_queue.cpp b/src/parallel/task_scheduler_queue.cpp
+--- a/src/parallel/task_scheduler_queue.cpp
++++ b/src/parallel/task_scheduler_queue.cpp
+@@ -5,6 +5,9 @@
+ #ifndef DUCKDB_NO_THREADS
+ #include "concurrentqueue.h"
+ #endif
++#ifdef ESP_PLATFORM
++#include "esp_heap_caps.h"
++#endif
+
+ namespace duckdb {
+
+@@ -14,6 +17,14 @@
+
+ #ifndef DUCKDB_NO_THREADS
+ struct TaskQueueTraits : public duckdb_moodycamel::ConcurrentQueueDefaultTraits {
++#ifdef ESP_PLATFORM
++	static void *malloc(size_t size) {
++		return heap_caps_aligned_alloc(alignof(std::max_align_t), size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
++	}
++	static void free(void *ptr) {
++		heap_caps_free(ptr);
++	}
++#endif
+ 	//! Consumers move on to the next producer after this many tasks (default: 256)
+ 	static constexpr uint32_t EXPLICIT_CONSUMER_CONSUMPTION_QUOTA_BEFORE_ROTATE = 16;
+ };

@@ -119,7 +119,7 @@ Size optimization (`-Oz` or `-Os`) is mandatory to ensure `.flash.text` stays wi
 
 ### C and C++ Conventions
 
-- Follow C11 for shell C code and C++17 for DuckDB and C++ firmware code.
+- Follow C17 for shell C code and C++17 for DuckDB and C++ firmware code.
 - Format code using `make format` (Google style, 4-space indent, and 100-character line limit).
 - Static analysis must pass `make lint` (`cppcheck`).
 - Avoid dynamic allocations in high-frequency interrupt paths or internal SRAM.
