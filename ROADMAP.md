@@ -84,5 +84,5 @@
     * [x] Stress testing and memory fragmentation benchmarks (`make check-stress`).
     * [x] TPC-H subset runner with automatic serial fixture loading, host reference results, query timings, and memory reports (`make check-tpch`).
     * [x] Hardware validation of TPC-H queries 1, 6, and 12 at scale factor 0.001.
-    * [ ] TPC-H needs 3 and 14 within the 8 MB buffer limit (both exceed it at scale factor 0.001).
-    * [ ] Hardware validation of the TPC-H subset at scale factor 0.01.
+    * [x] Hardware validation of TPC-H queries 1, 3, 6, 12, and 14 at scale factor 0.001 with a session-only 12 MB buffer limit.
+    * [x] Hardware validation of TPC-H queries 1, 6, and 12 at scale factor 0.01 with a session-only 12 MB buffer limit.
