@@ -26,7 +26,7 @@ clean: ## Remove host test binaries; keep the files in `build/` directory
 	rm -rf -- build/test
 
 clean-all: clean ## Also remove DuckDB and firmware builds; keep tools, logs, and backups
-	rm -rf -- build/duckdb build/firmware build/shell build/duckdb-micro-shell.tar.gz build/duckdb-micro-probe.tar.gz
+	rm -rf -- build/duckdb build/cli build/firmware build/shell build/duckdb-micro-shell.tar.gz build/duckdb-micro-probe.tar.gz
 
 submodules: ## Initialize and update Git submodules recursively
 	git submodule update --init --recursive --depth 1

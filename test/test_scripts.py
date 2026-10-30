@@ -83,7 +83,9 @@ class ScriptTests(unittest.TestCase):
             (root / "build/duckdb/src/libduckdb_esp32p4.a").touch()
             sdk = root / "external/esp-idf"
             sdk.mkdir(parents=True)
-            (sdk / "export.sh").write_text("idf.py() { test -f build/refreshed; }\n")
+            (sdk / "export.sh").write_text(
+                "cmake() { test -f build/refreshed; touch build/cli-refreshed; }\n"
+                "idf.py() { test -f build/cli-refreshed; }\n")
             subprocess.run(["bash", str(root / "scripts/build-shell.sh")], check=True)
             self.assertTrue((root / "build/refreshed").is_file())
 
