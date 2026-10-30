@@ -1275,7 +1275,7 @@ diff --git a/tools/shell/include/shell_renderer.hpp b/tools/shell/include/shell_
 +#ifdef ESP_PLATFORM
 +	idx_t render_bytes = 0;
 +#endif
- 
+
  	idx_t ColumnCount() const {
  		return metadata.ColumnCount();
 diff --git a/tools/shell/linenoise/highlighting.cpp b/tools/shell/linenoise/highlighting.cpp
@@ -1283,7 +1283,7 @@ diff --git a/tools/shell/linenoise/highlighting.cpp b/tools/shell/linenoise/high
 +++ b/tools/shell/linenoise/highlighting.cpp
 @@ -86,7 +86,7 @@
  	tokens.push_back(dot_token);
- 
+
  	for (idx_t i = 0; i + 1 < len; i++) {
 -		if (Linenoise::IsSpace(buf[i])) {
 +		if ((buf[i] == ' ' || buf[i] == '\r' || buf[i] == '\n' || buf[i] == '\t')) {
@@ -1293,18 +1293,19 @@ diff --git a/tools/shell/linenoise/highlighting.cpp b/tools/shell/linenoise/high
 diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
 --- a/tools/shell/shell.cpp
 +++ b/tools/shell/shell.cpp
-@@ -100,6 +100,10 @@
+@@ -100,6 +100,11 @@
  #include "shell_highlight.hpp"
  #include "shell_manual.hpp"
  #include "shell_state.hpp"
 +#ifdef ESP_PLATFORM
 +#include "linenoise/linenoise.h"
 +#include <cerrno>
++extern "C" bool shell_resolve_arg(const char *, const char *, char *, size_t);
 +#endif
  #include "duckdb/main/error_manager.hpp"
  #include "duckdb/main/client_config.hpp"
- 
-@@ -193,6 +197,10 @@
+
+@@ -193,6 +198,10 @@
  	struct timeval ru_utime; /* user CPU time used */
  	struct timeval ru_stime; /* system CPU time used */
  };
@@ -1314,21 +1315,39 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
 +#ifdef ESP_PLATFORM
  #define getrusage(A, B) memset(B, 0, sizeof(*B))
  #endif
- 
-@@ -419,6 +427,10 @@
+
+@@ -399,6 +408,17 @@
+ 	Print(PrintOutput::STDOUT, str);
  }
- 
+
++#ifdef ESP_PLATFORM
++static string esp_cli_path(const string &path) {
++	if (path.empty() || path == ":memory:") return path;
++	char resolved[512];
++	if (!shell_resolve_arg("duckdb", path.c_str(), resolved, sizeof(resolved))) {
++		throw duckdb::InvalidInputException("Invalid CLI file path");
++	}
++	return resolved;
++}
++#endif
++
+ /* Indicate out-of-memory and exit. */
+ static void shell_out_of_memory(void) {
+ 	fprintf(stderr, "Error: out of memory\n");
+@@ -419,6 +439,10 @@
+ }
+
  ShellState::~ShellState() {
 +#ifdef ESP_PLATFORM
 +	ResetOutput();
 +	if (pLog) fclose(pLog);
 +#endif
  }
- 
+
  void ShellState::Destroy() {
-@@ -533,6 +545,12 @@
+@@ -533,6 +557,12 @@
  	idx_t n = 0;
- 
+
  	while (1) {
 +#ifdef ESP_PLATFORM
 +		if (n >= 16384) {
@@ -1339,7 +1358,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  		if (n + 100 > nLine) {
  			nLine = nLine * 2 + 100;
  			zLine = (char *)realloc(zLine, nLine);
-@@ -581,6 +599,14 @@
+@@ -581,6 +611,15 @@
  		// don't print prompt in this scenario
  		return local_getline(zPrior, in);
  	}
@@ -1347,16 +1366,17 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
 +#ifdef ESP_PLATFORM
 +	free(zPrior);
 +	errno = 0;
-+	auto line = linenoise(isContinuation ? "   ...> " : "duckdb> ");
++	auto prompt = isContinuation ? string(continuePrompt) : main_prompt->GeneratePrompt(*this);
++	auto line = linenoise(prompt.c_str());
 +	if (!line && errno == EAGAIN) return strdup("\3");
 +	return line;
 +#endif
- 
+
  #ifdef HAVE_LINENOISE
  	if (rl_version == ReadLineVersion::LINENOISE) {
-@@ -776,6 +802,9 @@
+@@ -776,6 +815,9 @@
  }
- 
+
  void ShellState::Exit(int exit_code) {
 +#ifdef ESP_PLATFORM
 +	throw duckdb::InvalidInputException("DuckDB CLI exit requested (%d)", exit_code);
@@ -1364,34 +1384,61 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	if (GetReference()) {
  		GetReference()->PrintExitHint(exit_code);
  	}
-@@ -789,6 +818,7 @@
+@@ -789,6 +831,7 @@
  	}
  	// then exit
  	exit(exit_code);
 +#endif
  }
- 
+
  extern "C" {
-@@ -967,7 +997,7 @@
+@@ -880,7 +923,11 @@
+ */
+ void ShellState::RunTableDumpQuery(const string &zSelect) {
+ 	auto &con = *conn;
++#ifdef ESP_PLATFORM
++	auto result = con.Query(zSelect, duckdb::ChunkFormat::BufferManaged());
++#else
+ 	auto result = con.Query(zSelect);
++#endif
+ 	if (result->HasError()) {
+ 		PrintF("/**** ERROR: %s *****/\n", result->GetError().c_str());
+ 		AddError();
+@@ -967,7 +1014,11 @@
  		// we need to materialize the result prior to rendering
  		result = con.Query(std::move(statement), duckdb::ChunkFormat::BufferManaged());
  	} else {
--		result = con.Submit(std::move(statement));
++#ifdef ESP_PLATFORM
 +		result = con.Submit(std::move(statement), duckdb::ChunkFormat::BufferManaged());
++#else
+ 		result = con.Submit(std::move(statement));
++#endif
  	}
  	auto &res = *result;
  	if (res.HasError()) {
-@@ -1547,7 +1577,7 @@
+@@ -1445,7 +1496,11 @@
+ 	} else if (strcmp(zFile, "off") == 0) {
+ 		f = 0;
+ 	} else {
++#ifdef ESP_PLATFORM
++		const string expanded_path = esp_cli_path(zFile);
++#else
+ 		const string expanded_path = duckdb::FileSystem::ExpandPath(zFile, /*opener=*/nullptr);
++#endif
+ 		f = fopen(expanded_path.c_str(), bTextMode ? "w" : "wb");
+ 		if (f == 0) {
+ 			PrintF(PrintOutput::STDERR, "Error: cannot open \"%s\"\n", zFile);
+@@ -1547,7 +1602,7 @@
  }
- 
+
  void ShellState::StartPagerDisplay() {
 -#if !defined(_WIN32) && !defined(WIN32)
 +#if !defined(_WIN32) && !defined(WIN32) && !defined(ESP_PLATFORM)
  	// turn sigpipe trap into an interrupt while displaying the pager
  	// this allows us to interrupt display after the pager is exited by the user
  	signal(SIGPIPE, InterruptHandler);
-@@ -1556,13 +1586,16 @@
- 
+@@ -1556,13 +1611,16 @@
+
  void ShellState::FinishPagerDisplay() {
  	ShellState::Get().pager_is_active = false;
 -#if !defined(_WIN32) && !defined(WIN32)
@@ -1400,7 +1447,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	signal(SIGPIPE, SIG_DFL);
  #endif
  }
- 
+
  unique_ptr<PagerState> ShellState::SetupPager() {
 +#ifdef ESP_PLATFORM
 +	return nullptr;
@@ -1408,7 +1455,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	uint32_t win_console_cp_before_pager = 0;
  #if defined(_WIN32) || defined(WIN32)
  	if (pager_command == "more") { // UTF-8 mode must be used with "more" pager
-@@ -1584,6 +1617,7 @@
+@@ -1584,6 +1642,7 @@
  	out = pager_out;
  	outfile = "|" + pager_command;
  	return make_uniq<PagerState>(*this, win_console_cp_before_pager);
@@ -1416,10 +1463,51 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  }
  /*
  ** Change the output file back to stdout.
-@@ -2222,7 +2256,13 @@
+@@ -1898,6 +1957,10 @@
+ 		PrintHelp("import");
+ 		return false;
+ 	}
++#ifdef ESP_PLATFORM
++	file_name = esp_cli_path(file_name);
++#endif
++
+ 	if (function.empty()) {
+ 		// derive function to use from file extension
+ 		// FIXME: get this list from the system somehow
+@@ -1936,6 +1999,12 @@
+ 	}
+ 	ClearInterrupt();
+ 	// check if the table exists
++#ifdef ESP_PLATFORM
++	if (function == "read_csv" && !generic_parameters.count("buffer_size")) {
++		generic_parameters["buffer_size"] = "65536";
++	}
++#endif
++
+ 	auto &con = *conn;
+ 	auto needCommit = con.context->transaction.IsAutoCommit();
+ 	if (needCommit) {
+@@ -2079,9 +2148,15 @@
+ 		zNewFilename = args[iName];
+ 	}
+
++#ifdef ESP_PLATFORM
++	zNewFilename = esp_cli_path(zNewFilename);
++#endif
+ 	/* Close the existing database */
++#ifdef ESP_PLATFORM
++	last_result.reset();
++#endif
++	conn.reset();
+ 	db.reset();
+-	conn.reset();
+
+ 	if (!zNewFilename.empty()) {
+ 		if (newFlag) {
+@@ -2222,7 +2297,13 @@
  	return true;
  }
- 
+
 +#ifdef ESP_PLATFORM
 +extern bool esp_cli_read_file(ShellState &state, const string &file);
 +#endif
@@ -1430,15 +1518,15 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	if (safe_mode) {
  		PrintF(PrintOutput::STDERR, ".read cannot be used in -safe mode\n");
  		return false;
-@@ -2247,6 +2287,7 @@
+@@ -2247,6 +2328,7 @@
  	in = inSaved;
  	lineno = savedLineno;
  	return rc == 0;
 +#endif
  }
- 
+
  bool ShellState::DisplaySchemas(const vector<string> &args) {
-@@ -2541,7 +2582,11 @@
+@@ -2541,7 +2623,11 @@
  		if (!style.layout_on.empty()) {
  			style.layout_off = ShellHighlight::ResetTerminalCode();
  		}
@@ -1450,7 +1538,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  			style.heading_on = ShellHighlight::TerminalCode(PrintColor::BLACK, PrintIntensity::BOLD);
  			style.path_on = ShellHighlight::TerminalCode(PrintColor::BLACK, PrintIntensity::STANDARD);
  		} else {
-@@ -3004,7 +3049,7 @@
+@@ -3004,7 +3090,7 @@
  				if (zSql[idx] == '_') {
  					continue;
  				}
@@ -1459,9 +1547,9 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  					continue;
  				}
  				// the first character CANNOT be a numeric, only subsequent characters
-@@ -3061,38 +3106,54 @@
+@@ -3061,38 +3147,54 @@
  }
- 
+
  void ShellState::ShellAddHistory(const char *history) {
 +#ifdef ESP_PLATFORM
 +	linenoiseHistoryAdd(history);
@@ -1473,7 +1561,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  #endif
 +#endif
  }
- 
+
  int ShellState::ShellLoadHistory(const char *path) {
 +#ifdef ESP_PLATFORM
 +	return linenoiseHistoryLoad(path);
@@ -1486,7 +1574,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	return 0;
 +#endif
  }
- 
+
  int ShellState::ShellSaveHistory(const char *path) {
 +#ifdef ESP_PLATFORM
 +	return linenoiseHistorySave(path);
@@ -1499,7 +1587,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	return 0;
 +#endif
  }
- 
+
  int ShellState::ShellSetHistoryMaxLength(idx_t max_length) {
 +#ifdef ESP_PLATFORM
 +	return linenoiseHistorySetMaxLen(static_cast<int>(max_length));
@@ -1514,7 +1602,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  }
  /*
  ** Run a single line of SQL.  Return the number of errors.
-@@ -3135,6 +3196,12 @@
+@@ -3135,6 +3237,12 @@
  int ShellState::ProcessInput(InputMode mode) {
  	char *zLine = nullptr; /* A single input line */
  	char *zSql = nullptr;  /* Accumulated SQL text */
@@ -1527,7 +1615,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	idx_t nLine;           /* Length of current line */
  	idx_t nSql = 0;        /* Bytes of zSql[] used */
  	idx_t nAlloc = 0;      /* Allocated zSql[] space */
-@@ -3145,7 +3212,13 @@
+@@ -3145,7 +3253,13 @@
  	lineno = 0;
  	while (errCnt == 0 || !GetBailOnError(mode) || (!in && stdin_is_interactive)) {
  		fflush(out);
@@ -1541,7 +1629,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  		if (!zLine) {
  			/* End of input */
  			if (!in && stdin_is_interactive && !started_as_client && conn && conn->context &&
-@@ -3221,6 +3294,14 @@
+@@ -3221,6 +3335,14 @@
  			continue;
  		}
  		nLine = StringLength(zLine);
@@ -1556,7 +1644,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  		if (nSql + nLine + 2 >= nAlloc) {
  			nAlloc = nSql + nLine + 100;
  			zSql = (char *)realloc(zSql, nAlloc);
-@@ -3260,8 +3341,10 @@
+@@ -3260,8 +3382,10 @@
  	if (nSql && !_all_whitespace(zSql)) {
  		errCnt += RunOneSqlLine(mode, zSql);
  	}
@@ -1566,7 +1654,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
 +#endif
  	return errCnt > 0;
  }
- 
+
 diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata_command.cpp
 --- a/tools/shell/shell_metadata_command.cpp
 +++ b/tools/shell/shell_metadata_command.cpp
@@ -1612,22 +1700,29 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
      {"headers", 2, ToggleHeaders, "on|off", "Turn display of headers on or off", 0, ""},
      {"help", 0, ShowHelp, "?-all? ?PATTERN?", "Show help text for PATTERN (.help agent: the agent mode)", 0, ""},
      {"highlight", 2, ToggleHighlighting, "on|off", "Toggle syntax highlighting in the shell on/off", 0, ""},
-@@ -998,14 +1010,18 @@
-     {"keyword", 2, SetHighlightingColor<DeprecatedHighlightColors::KEYWORD>, "?COLOR?",
-      "DEPRECATED: Sets the syntax highlighting color used for keywords", 0, nullptr},
- #endif
+@@ -984,8 +996,10 @@
+     {"highlight_mode", 2, ToggleHighlightMode, "mixed|dark|light", "Toggle the highlight mode to dark or light mode", 0,
+      ""},
+     {"highlight_results", 2, ToggleHighlightResult, "on|off", "Turn highlighting of results on or off", 0, ""},
 +#ifndef ESP_PLATFORM
+     {"history", 0, PrintHistory, "?N?", "Show the command history with syntax highlighting", 0,
+      "If N is given, only the last N entries are shown.\nUse the shell_history() table function to query the history."},
++#endif
+     {"import", 0, ImportData, "FILE TABLE", "Import data from FILE into TABLE", 0,
+      "Options:\n\t--csv\tImport data from CSV (read_csv)\n\t--json\tImport data from JSON "
+      "(read_json)\n\t--parquet\tImport data from Parquet (read_parquet)\n\t--[parameter] [value]\tProvides a parameter "
+@@ -1000,12 +1014,14 @@
+ #endif
      {"last", 1, RenderLastResult, "",
       "Render the last result in full (after EXPLAIN ANALYZE: the full, expanded query tree)", 0, ""},
-+#endif
++
      {"large_number_rendering", 2, SetLargeNumberRendering, "MODE",
       "Toggle readable rendering of large numbers (duckbox only)", 0, "Mode: all|footer|off"},
      {"log", 2, ToggleLog, "FILE|off", "Turn logging on or off.  FILE can be stderr/stdout", 0, ""},
-+#ifndef ESP_PLATFORM
      {"manual", 2, ShowManual, "FUNCTION", "Show the manual page for a SQL function", 0,
       "Displays the signatures, descriptions and examples of all overloads of FUNCTION.\n"
       "FUNCTION may be qualified: [database.][schema.]function."},
-+#endif
++
      {"maxbytes", 0, SetMaxBytes, "COUNT",
       "Sets the maximum number of bytes of rows for display (0 = all). Only for markdown mode in -agent mode.", 0, ""},
      {"maxcellwidth", 0, SetMaxCellWidth, "COUNT",
@@ -1646,7 +1741,7 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
      {"progress_bar", 0, ConfigureProgressBar, "OPTIONS", "Configure the progress bar display", 0,
       "OPTIONS:\n\t--add [COMPONENT]\tAdd a component to the progress bar\n\t--clear\tClear all components"},
 @@ -1050,8 +1068,10 @@
- 
+
      {"quit", 0, QuitProcess, "", "Exit this program", 0, ""},
      {"read", 2, ReadFromFile, "FILE", "Read input from FILE", 3, ""},
 +#ifndef ESP_PLATFORM

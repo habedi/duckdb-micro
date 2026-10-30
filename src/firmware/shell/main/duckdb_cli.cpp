@@ -1,20 +1,24 @@
+#include <cctype>
+
+#include "duckdb/parser/parser.hpp"
 #include "linenoise/linenoise.h"
 #include "shell_prompt.hpp"
 #include "shell_state.hpp"
 #include "terminal.hpp"
-#include "duckdb/parser/parser.hpp"
-
-#include <cctype>
 
 extern "C" bool shell_resolve_arg(const char* cmd, const char* in, char* out, size_t out_len);
+
+extern "C" size_t shell_command_line_limit(void);
 
 namespace {
 void cli_complete(const char* input, linenoiseCompletions* completions) {
     try {
         const std::string line(input);
+        const auto limit = shell_command_line_limit();
+        if (line.size() + 1 >= limit) return;
         if (!line.empty() && line[0] == '.') {
-            for (const auto& candidate : duckdb_shell::ShellState::GetMetadataCompletions(
-                     input, line.size())) {
+            for (const auto& candidate :
+                 duckdb_shell::ShellState::GetMetadataCompletions(input, line.size())) {
                 if (completions->len == 16) break;
                 linenoiseAddCompletion(completions, candidate.c_str());
             }
@@ -23,14 +27,16 @@ void cli_complete(const char* input, linenoiseCompletions* completions) {
         const auto end = line.size();
         auto start = end;
         while (start && (std::isalnum(static_cast<unsigned char>(line[start - 1])) ||
-                         line[start - 1] == '_')) --start;
+                         line[start - 1] == '_'))
+            --start;
         if (start == end) return;
         const auto prefix = duckdb::StringUtil::Lower(line.substr(start));
         for (const auto& keyword : duckdb::Parser::KeywordList()) {
             if (!duckdb::StringUtil::StartsWith(keyword.name, prefix)) continue;
             if (completions->len == 16) break;
             const auto candidate = line.substr(0, start) + duckdb::StringUtil::Upper(keyword.name);
-            linenoiseAddCompletion(completions, candidate.c_str());
+            if (candidate.size() + 1 < limit)
+                linenoiseAddCompletion(completions, candidate.c_str());
         }
     } catch (const std::exception&) {
         // Completion is optional when the query engine has little memory left.
@@ -79,7 +85,10 @@ int duckdb_cli_run(const char* path) {
         ~Reset() { ShellState::GetReference() = nullptr; }
     } reset;
     ShellState::GetReference() = state.get();
+    state->out = stdout;
     state->Initialize();
+    state->main_prompt->ParsePrompt("duckdb> ");
+    snprintf(state->continuePrompt, sizeof(state->continuePrompt), "   ...> ");
     state->config.SetOptionByName("threads", duckdb::Value("1"));
     state->config.SetOptionByName("async_threads", duckdb::Value("0"));
     state->config.SetOptionByName("memory_limit", duckdb::Value("8MB"));
