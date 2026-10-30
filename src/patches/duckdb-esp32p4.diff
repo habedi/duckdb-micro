@@ -1265,3 +1265,604 @@ diff --git a/src/parallel/task_scheduler_queue.cpp b/src/parallel/task_scheduler
  	//! Consumers move on to the next producer after this many tasks (default: 256)
  	static constexpr uint32_t EXPLICIT_CONSUMER_CONSUMPTION_QUOTA_BEFORE_ROTATE = 16;
  };
+diff --git a/tools/shell/include/shell_renderer.hpp b/tools/shell/include/shell_renderer.hpp
+--- a/tools/shell/include/shell_renderer.hpp
++++ b/tools/shell/include/shell_renderer.hpp
+@@ -50,6 +50,9 @@
+ 	vector<unique_ptr<duckdb::DataChunk>> chunks;
+ 	bool exhausted_result = false;
+ 	idx_t loaded_row_count = 0;
++#ifdef ESP_PLATFORM
++	idx_t render_bytes = 0;
++#endif
+ 
+ 	idx_t ColumnCount() const {
+ 		return metadata.ColumnCount();
+diff --git a/tools/shell/linenoise/highlighting.cpp b/tools/shell/linenoise/highlighting.cpp
+--- a/tools/shell/linenoise/highlighting.cpp
++++ b/tools/shell/linenoise/highlighting.cpp
+@@ -86,7 +86,7 @@
+ 	tokens.push_back(dot_token);
+ 
+ 	for (idx_t i = 0; i + 1 < len; i++) {
+-		if (Linenoise::IsSpace(buf[i])) {
++		if ((buf[i] == ' ' || buf[i] == '\r' || buf[i] == '\n' || buf[i] == '\t')) {
+ 			highlightToken argument_token;
+ 			argument_token.type = tokenType::TOKEN_STRING_CONSTANT;
+ 			argument_token.start = i + 1;
+diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
+--- a/tools/shell/shell.cpp
++++ b/tools/shell/shell.cpp
+@@ -100,6 +100,11 @@
+ #include "shell_highlight.hpp"
+ #include "shell_manual.hpp"
+ #include "shell_state.hpp"
++#ifdef ESP_PLATFORM
++#include "linenoise/linenoise.h"
++#include <cerrno>
++extern "C" bool shell_resolve_arg(const char *, const char *, char *, size_t);
++#endif
+ #include "duckdb/main/error_manager.hpp"
+ #include "duckdb/main/client_config.hpp"
+ 
+@@ -193,6 +198,10 @@
+ 	struct timeval ru_utime; /* user CPU time used */
+ 	struct timeval ru_stime; /* system CPU time used */
+ };
++#define getrusage(A, B) memset(B, 0, sizeof(*B))
++#endif
++
++#ifdef ESP_PLATFORM
+ #define getrusage(A, B) memset(B, 0, sizeof(*B))
+ #endif
+ 
+@@ -399,6 +408,17 @@
+ 	Print(PrintOutput::STDOUT, str);
+ }
+ 
++#ifdef ESP_PLATFORM
++static string esp_cli_path(const string &path) {
++	if (path.empty() || path == ":memory:") return path;
++	char resolved[512];
++	if (!shell_resolve_arg("duckdb", path.c_str(), resolved, sizeof(resolved))) {
++		throw duckdb::InvalidInputException("Invalid CLI file path");
++	}
++	return resolved;
++}
++#endif
++
+ /* Indicate out-of-memory and exit. */
+ static void shell_out_of_memory(void) {
+ 	fprintf(stderr, "Error: out of memory\n");
+@@ -406,6 +426,10 @@
+ }
+ 
+ ShellState::ShellState() : seenInterrupt(0), program_name("duckdb") {
++#ifdef ESP_PLATFORM
++	enableTimer = false;
++	timerDigits = 3;
++#endif
+ 	config.error_manager->AddCustomError(
+ 	    duckdb::ErrorType::UNSIGNED_EXTENSION,
+ 	    "Extension \"%s\" could not be loaded because its signature is either missing or invalid and unsigned "
+@@ -419,6 +443,11 @@
+ }
+ 
+ ShellState::~ShellState() {
++#ifdef ESP_PLATFORM
++	ResetOutput();
++	CloseOutputFile(pLog);
++	pLog = nullptr;
++#endif
+ }
+ 
+ void ShellState::Destroy() {
+@@ -533,6 +562,12 @@
+ 	idx_t n = 0;
+ 
+ 	while (1) {
++#ifdef ESP_PLATFORM
++		if (n >= 16384) {
++			free(zLine);
++			throw duckdb::InvalidInputException("SQL input line exceeds 16 KiB");
++		}
++#endif
+ 		if (n + 100 > nLine) {
+ 			nLine = nLine * 2 + 100;
+ 			zLine = (char *)realloc(zLine, nLine);
+@@ -581,6 +616,15 @@
+ 		// don't print prompt in this scenario
+ 		return local_getline(zPrior, in);
+ 	}
++
++#ifdef ESP_PLATFORM
++	free(zPrior);
++	errno = 0;
++	auto prompt = isContinuation ? string(continuePrompt) : main_prompt->GeneratePrompt(*this);
++	auto line = linenoise(prompt.c_str());
++	if (!line && errno == EAGAIN) return strdup("\3");
++	return line;
++#endif
+ 
+ #ifdef HAVE_LINENOISE
+ 	if (rl_version == ReadLineVersion::LINENOISE) {
+@@ -776,6 +820,9 @@
+ }
+ 
+ void ShellState::Exit(int exit_code) {
++#ifdef ESP_PLATFORM
++	throw duckdb::InvalidInputException("DuckDB CLI exit requested (%d)", exit_code);
++#else
+ 	if (GetReference()) {
+ 		GetReference()->PrintExitHint(exit_code);
+ 	}
+@@ -789,6 +836,7 @@
+ 	}
+ 	// then exit
+ 	exit(exit_code);
++#endif
+ }
+ 
+ extern "C" {
+@@ -880,7 +928,11 @@
+ */
+ void ShellState::RunTableDumpQuery(const string &zSelect) {
+ 	auto &con = *conn;
++#ifdef ESP_PLATFORM
++	auto result = con.Query(zSelect, duckdb::ChunkFormat::BufferManaged());
++#else
+ 	auto result = con.Query(zSelect);
++#endif
+ 	if (result->HasError()) {
+ 		PrintF("/**** ERROR: %s *****/\n", result->GetError().c_str());
+ 		AddError();
+@@ -967,7 +1019,11 @@
+ 		// we need to materialize the result prior to rendering
+ 		result = con.Query(std::move(statement), duckdb::ChunkFormat::BufferManaged());
+ 	} else {
++#ifdef ESP_PLATFORM
++		result = con.Submit(std::move(statement), duckdb::ChunkFormat::BufferManaged());
++#else
+ 		result = con.Submit(std::move(statement));
++#endif
+ 	}
+ 	auto &res = *result;
+ 	if (res.HasError()) {
+@@ -1445,7 +1501,11 @@
+ 	} else if (strcmp(zFile, "off") == 0) {
+ 		f = 0;
+ 	} else {
++#ifdef ESP_PLATFORM
++		const string expanded_path = esp_cli_path(zFile);
++#else
+ 		const string expanded_path = duckdb::FileSystem::ExpandPath(zFile, /*opener=*/nullptr);
++#endif
+ 		f = fopen(expanded_path.c_str(), bTextMode ? "w" : "wb");
+ 		if (f == 0) {
+ 			PrintF(PrintOutput::STDERR, "Error: cannot open \"%s\"\n", zFile);
+@@ -1547,7 +1607,7 @@
+ }
+ 
+ void ShellState::StartPagerDisplay() {
+-#if !defined(_WIN32) && !defined(WIN32)
++#if !defined(_WIN32) && !defined(WIN32) && !defined(ESP_PLATFORM)
+ 	// turn sigpipe trap into an interrupt while displaying the pager
+ 	// this allows us to interrupt display after the pager is exited by the user
+ 	signal(SIGPIPE, InterruptHandler);
+@@ -1556,13 +1616,16 @@
+ 
+ void ShellState::FinishPagerDisplay() {
+ 	ShellState::Get().pager_is_active = false;
+-#if !defined(_WIN32) && !defined(WIN32)
++#if !defined(_WIN32) && !defined(WIN32) && !defined(ESP_PLATFORM)
+ 	// enable sigpipe trap again after finishing the display
+ 	signal(SIGPIPE, SIG_DFL);
+ #endif
+ }
+ 
+ unique_ptr<PagerState> ShellState::SetupPager() {
++#ifdef ESP_PLATFORM
++	return nullptr;
++#else
+ 	uint32_t win_console_cp_before_pager = 0;
+ #if defined(_WIN32) || defined(WIN32)
+ 	if (pager_command == "more") { // UTF-8 mode must be used with "more" pager
+@@ -1584,6 +1647,7 @@
+ 	out = pager_out;
+ 	outfile = "|" + pager_command;
+ 	return make_uniq<PagerState>(*this, win_console_cp_before_pager);
++#endif
+ }
+ /*
+ ** Change the output file back to stdout.
+@@ -1898,6 +1962,10 @@
+ 		PrintHelp("import");
+ 		return false;
+ 	}
++#ifdef ESP_PLATFORM
++	file_name = esp_cli_path(file_name);
++#endif
++
+ 	if (function.empty()) {
+ 		// derive function to use from file extension
+ 		// FIXME: get this list from the system somehow
+@@ -1936,6 +2004,12 @@
+ 	}
+ 	ClearInterrupt();
+ 	// check if the table exists
++#ifdef ESP_PLATFORM
++	if (function == "read_csv" && !generic_parameters.count("buffer_size")) {
++		generic_parameters["buffer_size"] = "65536";
++	}
++#endif
++
+ 	auto &con = *conn;
+ 	auto needCommit = con.context->transaction.IsAutoCommit();
+ 	if (needCommit) {
+@@ -2079,9 +2153,15 @@
+ 		zNewFilename = args[iName];
+ 	}
+ 
++#ifdef ESP_PLATFORM
++	zNewFilename = esp_cli_path(zNewFilename);
++#endif
+ 	/* Close the existing database */
++#ifdef ESP_PLATFORM
++	last_result.reset();
++#endif
++	conn.reset();
+ 	db.reset();
+-	conn.reset();
+ 
+ 	if (!zNewFilename.empty()) {
+ 		if (newFlag) {
+@@ -2222,7 +2302,13 @@
+ 	return true;
+ }
+ 
++#ifdef ESP_PLATFORM
++extern bool esp_cli_read_file(ShellState &state, const string &file);
++#endif
+ bool ShellState::ReadFromFile(const string &file) {
++#ifdef ESP_PLATFORM
++	return esp_cli_read_file(*this, file);
++#else
+ 	if (safe_mode) {
+ 		PrintF(PrintOutput::STDERR, ".read cannot be used in -safe mode\n");
+ 		return false;
+@@ -2247,6 +2333,7 @@
+ 	in = inSaved;
+ 	lineno = savedLineno;
+ 	return rc == 0;
++#endif
+ }
+ 
+ bool ShellState::DisplaySchemas(const vector<string> &args) {
+@@ -2541,7 +2628,11 @@
+ 		if (!style.layout_on.empty()) {
+ 			style.layout_off = ShellHighlight::ResetTerminalCode();
+ 		}
++		#ifdef ESP_PLATFORM
++		if (highlight_mode == HighlightMode::LIGHT_MODE) {
++#else
+ 		if (linenoiseGetTerminalColorMode() == LINENOISE_LIGHT_MODE) {
++#endif
+ 			style.heading_on = ShellHighlight::TerminalCode(PrintColor::BLACK, PrintIntensity::BOLD);
+ 			style.path_on = ShellHighlight::TerminalCode(PrintColor::BLACK, PrintIntensity::STANDARD);
+ 		} else {
+@@ -3004,7 +3095,7 @@
+ 				if (zSql[idx] == '_') {
+ 					continue;
+ 				}
+-				if (zSql[idx] >= '\200' && zSql[idx] <= '\377') {
++				if (static_cast<unsigned char>(zSql[idx]) >= 0x80) {
+ 					continue;
+ 				}
+ 				// the first character CANNOT be a numeric, only subsequent characters
+@@ -3061,38 +3152,54 @@
+ }
+ 
+ void ShellState::ShellAddHistory(const char *history) {
++#ifdef ESP_PLATFORM
++	linenoiseHistoryAdd(history);
++#else
+ #ifdef HAVE_LINENOISE
+ 	if (rl_version == ReadLineVersion::LINENOISE) {
+ 		linenoiseHistoryAdd(history);
+ 	}
+ #endif
++#endif
+ }
+ 
+ int ShellState::ShellLoadHistory(const char *path) {
++#ifdef ESP_PLATFORM
++	return linenoiseHistoryLoad(path);
++#else
+ #ifdef HAVE_LINENOISE
+ 	if (rl_version == ReadLineVersion::LINENOISE) {
+ 		return linenoiseHistoryLoad(path);
+ 	}
+ #endif
+ 	return 0;
++#endif
+ }
+ 
+ int ShellState::ShellSaveHistory(const char *path) {
++#ifdef ESP_PLATFORM
++	return linenoiseHistorySave(path);
++#else
+ #ifdef HAVE_LINENOISE
+ 	if (rl_version == ReadLineVersion::LINENOISE) {
+ 		return linenoiseHistorySave(path);
+ 	}
+ #endif
+ 	return 0;
++#endif
+ }
+ 
+ int ShellState::ShellSetHistoryMaxLength(idx_t max_length) {
++#ifdef ESP_PLATFORM
++	return linenoiseHistorySetMaxLen(static_cast<int>(max_length));
++#else
+ #ifdef HAVE_LINENOISE
+ 	if (rl_version == ReadLineVersion::LINENOISE) {
+ 		return linenoiseHistorySetMaxLen(static_cast<int>(max_length));
+ 	}
+ #endif
+ 	return 0;
++#endif
+ }
+ /*
+ ** Run a single line of SQL.  Return the number of errors.
+@@ -3135,6 +3242,12 @@
+ int ShellState::ProcessInput(InputMode mode) {
+ 	char *zLine = nullptr; /* A single input line */
+ 	char *zSql = nullptr;  /* Accumulated SQL text */
++#ifdef ESP_PLATFORM
++	struct InputCleanup {
++		char *&line, *&sql;
++		~InputCleanup() { free(line); free(sql); }
++	} cleanup{zLine, zSql};
++#endif
+ 	idx_t nLine;           /* Length of current line */
+ 	idx_t nSql = 0;        /* Bytes of zSql[] used */
+ 	idx_t nAlloc = 0;      /* Allocated zSql[] space */
+@@ -3145,7 +3258,13 @@
+ 	lineno = 0;
+ 	while (errCnt == 0 || !GetBailOnError(mode) || (!in && stdin_is_interactive)) {
+ 		fflush(out);
++#ifdef ESP_PLATFORM
++		auto prior_line = zLine;
++		zLine = nullptr;
++		zLine = OneInputLine(in, prior_line, nSql > 0);
++#else
+ 		zLine = OneInputLine(in, zLine, nSql > 0);
++#endif
+ 		if (!zLine) {
+ 			/* End of input */
+ 			if (!in && stdin_is_interactive && !started_as_client && conn && conn->context &&
+@@ -3221,6 +3340,14 @@
+ 			continue;
+ 		}
+ 		nLine = StringLength(zLine);
++#ifdef ESP_PLATFORM
++		if (nSql + nLine > 16384) {
++			PrintDatabaseError("SQL input exceeds 16 KiB");
++			nSql = 0;
++			errCnt++;
++			continue;
++		}
++#endif
+ 		if (nSql + nLine + 2 >= nAlloc) {
+ 			nAlloc = nSql + nLine + 100;
+ 			zSql = (char *)realloc(zSql, nAlloc);
+@@ -3260,8 +3387,10 @@
+ 	if (nSql && !_all_whitespace(zSql)) {
+ 		errCnt += RunOneSqlLine(mode, zSql);
+ 	}
++#ifndef ESP_PLATFORM
+ 	free(zSql);
+ 	free(zLine);
++#endif
+ 	return errCnt > 0;
+ }
+ 
+diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata_command.cpp
+--- a/tools/shell/shell_metadata_command.cpp
++++ b/tools/shell/shell_metadata_command.cpp
+@@ -935,11 +935,15 @@
+ #endif
+     {"bail", 2, ToggleBail, "on|off", "Stop after hitting an error.  Default OFF", 3, ""},
+     {"binary", 2, ToggleBinary, "on|off", "Turn binary output on or off.  Default OFF", 3, ""},
++#ifndef ESP_PLATFORM
+     {"cd", 2, ChangeDirectory, "DIRECTORY", "Change the working directory to DIRECTORY", 0, ""},
++#endif
+     {"changes", 2, ToggleChanges, "on|off", "Show number of rows changed by SQL", 3, ""},
+     {"columns", 1, SetColumnRendering, "", "Column-wise rendering of query results", 0, ""},
++#ifndef ESP_PLATFORM
+     {"connect_command", 0, SetConnectCommand, "COMMAND", "Set the command executed by -connect", 0,
+      "Placeholders of the form {parameter|default} are replaced by the -host/-port/-token arguments"},
++#endif
+ #ifdef HAVE_LINENOISE
+     {"comment", 2, SetHighlightingColor<DeprecatedHighlightColors::COMMENT>, "?COLOR?",
+      "DEPRECATED: Sets the syntax highlighting color used for comment values", 0, nullptr},
+@@ -965,17 +969,25 @@
+     },
+     {"display_colors", 0, DisplayColors, "[bold|underline]", "Display all terminal colors and their names", 0, ""},
+     {"echo", 2, ToggleEcho, "on|off", "Turn command echo on or off", 3, ""},
++#ifndef ESP_PLATFORM
+     {"edit", 0, nullptr, "", "Opens an external text editor to edit a query.", 0,
+      "Notes:\n\t* The editor is read from the environment variables\n\t  DUCKDB_EDITOR, EDITOR, VISUAL in-order\n\t* "
+      "If "
+      "none of these are set, the default editor is vi\n\t* \\e can be used as an alias for .edit"},
++#endif
+ #ifdef HAVE_LINENOISE
+     {"error", 2, SetHighlightingColor<DeprecatedHighlightColors::ERROR>, "?COLOR?",
+      "DEPRECATED: Sets the syntax highlighting color used for errors", 0, nullptr},
+ #endif
++#ifndef ESP_PLATFORM
+     {"excel", 0, SetOutputExcel, "", "Display the output of next command in spreadsheet", 0,
+      "--bom\tPut a UTF8 byte-order mark on intermediate file"},
++#endif
++#ifdef ESP_PLATFORM
++    {"exit", 0, QuitProcess, "", "Return to MicroShell", 0, ""},
++#else
+     {"exit", 0, ExitProcess, "?CODE?", "Exit this program with return-code CODE", 0, ""},
++#endif
+     {"headers", 2, ToggleHeaders, "on|off", "Turn display of headers on or off", 0, ""},
+     {"help", 0, ShowHelp, "?-all? ?PATTERN?", "Show help text for PATTERN (.help agent: the agent mode)", 0, ""},
+     {"highlight", 2, ToggleHighlighting, "on|off", "Toggle syntax highlighting in the shell on/off", 0, ""},
+@@ -984,8 +996,10 @@
+     {"highlight_mode", 2, ToggleHighlightMode, "mixed|dark|light", "Toggle the highlight mode to dark or light mode", 0,
+      ""},
+     {"highlight_results", 2, ToggleHighlightResult, "on|off", "Turn highlighting of results on or off", 0, ""},
++#ifndef ESP_PLATFORM
+     {"history", 0, PrintHistory, "?N?", "Show the command history with syntax highlighting", 0,
+      "If N is given, only the last N entries are shown.\nUse the shell_history() table function to query the history."},
++#endif
+     {"import", 0, ImportData, "FILE TABLE", "Import data from FILE into TABLE", 0,
+      "Options:\n\t--csv\tImport data from CSV (read_csv)\n\t--json\tImport data from JSON "
+      "(read_json)\n\t--parquet\tImport data from Parquet (read_parquet)\n\t--[parameter] [value]\tProvides a parameter "
+@@ -1000,12 +1014,14 @@
+ #endif
+     {"last", 1, RenderLastResult, "",
+      "Render the last result in full (after EXPLAIN ANALYZE: the full, expanded query tree)", 0, ""},
++
+     {"large_number_rendering", 2, SetLargeNumberRendering, "MODE",
+      "Toggle readable rendering of large numbers (duckbox only)", 0, "Mode: all|footer|off"},
+     {"log", 2, ToggleLog, "FILE|off", "Turn logging on or off.  FILE can be stderr/stdout", 0, ""},
+     {"manual", 2, ShowManual, "FUNCTION", "Show the manual page for a SQL function", 0,
+      "Displays the signatures, descriptions and examples of all overloads of FUNCTION.\n"
+      "FUNCTION may be qualified: [database.][schema.]function."},
++
+     {"maxbytes", 0, SetMaxBytes, "COUNT",
+      "Sets the maximum number of bytes of rows for display (0 = all). Only for markdown mode in -agent mode.", 0, ""},
+     {"maxcellwidth", 0, SetMaxCellWidth, "COUNT",
+@@ -1038,11 +1054,13 @@
+     {"output", 0, SetOutput, "?FILE?", "Send output to FILE or stdout if FILE is omitted", 0,
+      "If FILE begins with '|' then open as a pipe\n\t--bom\tPut a UTF8 byte-order mark at the beginning\n\t-e\tSend "
+      "output to the system text editor\n\t-x\tSend output as CSV to a spreadsheet (same as \".excel\")"},
++#ifndef ESP_PLATFORM
+     {"pager", 0, SetPager, "OPTIONS", "Control pager usage for output", 0,
+      "Options:\n\t[on|off|automatic]\tToggle pager mode (default: automatic)\n\tset_[row|column]_threshold "
+      "THRESHOLD\tIn automatic mode, trigger the pager when the result has more rows/columns than "
+      "this\n\t[pager_command]\tSet the pager command to invoke\nNote: Set DUCKDB_PAGER or PAGER environment variable "
+      "or <cmd> to configure default pager"},
++#endif
+     {"print", 0, PrintArguments, "STRING...", "Print literal STRING", 3, ""},
+     {"progress_bar", 0, ConfigureProgressBar, "OPTIONS", "Configure the progress bar display", 0,
+      "OPTIONS:\n\t--add [COMPONENT]\tAdd a component to the progress bar\n\t--clear\tClear all components"},
+@@ -1050,8 +1068,10 @@
+ 
+     {"quit", 0, QuitProcess, "", "Exit this program", 0, ""},
+     {"read", 2, ReadFromFile, "FILE", "Read input from FILE", 3, ""},
++#ifndef ESP_PLATFORM
+     {"read_line_version", 2, SetReadLineVersion, "linenoise|fallback",
+      "Sets the library used for processing interactive input", 0, ""},
++#endif
+ #ifdef HAVE_LINENOISE
+     {"render_completion", 2, ToggleCompletionRendering, "on|off",
+      "Toggle displaying of completion prompts in the shell on/off", 0, ""},
+@@ -1060,28 +1080,38 @@
+     {"rows", 1, SetRowRendering, "", "Row-wise rendering of query results (default)", 0, ""},
+     {"safe_mode", 0, ShellState::EnableSafeMode, "", "Enable safe-mode", 0, ""},
+     {"separator", 0, ShellState::SetSeparator, "COL ?ROW?", "Change the column and row separators", 0, ""},
++#ifndef ESP_PLATFORM
+     {"serve_command", 0, SetServeCommand, "COMMAND", "Set the command executed by -serve", 0,
+      "Placeholders of the form {parameter|default} are replaced by the -host/-port/-token arguments"},
++#endif
+     {"schema", 0, DisplaySchemas, "?PATTERN?", "Show the CREATE statements matching PATTERN", 0,
+      "By default the schema is pretty-printed using the SQL formatter.\nOptions:\n\t--no-indent\tPrint the schema as "
+      "it is stored, without formatting\n\t--no-format\tAlias for --no-indent\n\t--indent\tForce pretty-printing (the "
+      "default)\n\t--format\tAlias for --indent"},
++#ifndef ESP_PLATFORM
+     {"shell", 0, RunShellCommand, "CMD ARGS...", "Run CMD ARGS... in a system shell", 0, ""},
++#endif
+     {"show", 1, ShowConfiguration, "", "Show the current values for various settings", 0, ""},
+ #ifdef HAVE_LINENOISE
+     {"singleline", 1, ToggleSingleLine, "", "Sets the render mode to single-line", 0, ""},
+ #endif
+     {"startup_text", 2, SetStartupText, "none|version|all",
+      "Start-up text to display. Set this as the first line in .duckdbrc", 0, ""},
++#ifndef ESP_PLATFORM
+     {"system", 0, RunShellCommand, "CMD ARGS...", "Run CMD ARGS... in a system shell", 0, ""},
++#endif
+     {"tables", 0, ShowTables, "?TABLE?", "List names of tables matching LIKE pattern TABLE", 2, ""},
+     {"thousand_sep", 0, SetThousandSep, "SEP",
+      "Sets the thousand separator used when rendering numbers. Only for duckbox mode.", 4, ""},
+     {"timer", 0, ShellState::ToggleTimer, "on|off [DIGITS]",
+      "Turn SQL timer on or off, DIGITS decimals for the real time (default 3)", 0, ""},
++#ifndef ESP_PLATFORM
+     {"ui_command", 0, SetUICommand, "[command]", "Set the UI command", 0, ""},
++#endif
+     {"version", 1, ShowVersion, "", "Show the version", 0, ""},
++#ifndef ESP_PLATFORM
+     {"web", 1, OpenProfileWeb, "", "Open the last query profile (EXPLAIN ANALYZE) in a web browser", 0, ""},
++#endif
+     {"width", 0, SetWidths, "NUM1 NUM2 ...", "Set minimum column widths for columnar output", 0,
+      "Negative values right-justify"},
+ #if defined(_WIN32) || defined(WIN32)
+diff --git a/tools/shell/shell_renderer.cpp b/tools/shell/shell_renderer.cpp
+--- a/tools/shell/shell_renderer.cpp
++++ b/tools/shell/shell_renderer.cpp
+@@ -416,6 +416,26 @@
+ 			}
+ 		}
+ 	}
++#ifdef ESP_PLATFORM
++	// Converted strings are outside the buffer manager's memory budget.
++	auto bytes = varchar_chunk->GetAllocationSize();
++	for (idx_t col = 0; col < varchar_chunk->ColumnCount(); ++col) {
++		auto &values = varchar_chunk->data[col];
++		auto strings = duckdb::FlatVector::GetData<duckdb::string_t>(values);
++		for (idx_t row = 0; row < varchar_chunk->size(); ++row) {
++			if (duckdb::FlatVector::IsNull(values, row)) continue;
++			auto length = strings[row].GetSize();
++			if (length > 2 * 1024 * 1024 || bytes > 2 * 1024 * 1024 - length) {
++				throw duckdb::InvalidInputException("CLI rendering exceeds 2 MiB; use LIMIT or fewer columns");
++			}
++			bytes += length;
++		}
++	}
++	if (bytes > 2 * 1024 * 1024 || render_bytes > 2 * 1024 * 1024 - bytes) {
++		throw duckdb::InvalidInputException("CLI rendering exceeds 2 MiB; use LIMIT or fewer columns");
++	}
++	render_bytes += bytes;
++#endif
+ 	loaded_row_count += chunk->size();
+ 	chunks.push_back(std::move(varchar_chunk));
+ 	return true;
+diff --git a/src/common/thread_util.cpp b/src/common/thread_util.cpp
+--- a/src/common/thread_util.cpp
++++ b/src/common/thread_util.cpp
+@@ -5,6 +5,11 @@
+ #include "duckdb/common/helper.hpp"
+ #include "duckdb/common/time_point.hpp"
+ #include "duckdb/main/client_context.hpp"
++
++#ifdef ESP_PLATFORM
++#include "freertos/FreeRTOS.h"
++#include "freertos/task.h"
++#endif
+ 
+ namespace duckdb {
+ 
+@@ -31,12 +36,17 @@
+ }
+ 
+ thread_id ThreadUtil::GetThreadId() {
++#ifdef ESP_PLATFORM
++	// DuckDB also runs in SDK tasks that are not registered as pthreads.
++	return thread_id(reinterpret_cast<std::thread::native_handle_type>(xTaskGetCurrentTaskHandle()));
++#else
+ 	return std::this_thread::get_id();
++#endif
+ }
+ 
+ string ThreadUtil::GetThreadIdString() {
+ 	std::ostringstream ss;
+-	ss << std::this_thread::get_id();
++	ss << GetThreadId();
+ 	return ss.str();
+ }
+ 

@@ -83,7 +83,9 @@ class ScriptTests(unittest.TestCase):
             (root / "build/duckdb/src/libduckdb_esp32p4.a").touch()
             sdk = root / "external/esp-idf"
             sdk.mkdir(parents=True)
-            (sdk / "export.sh").write_text("idf.py() { test -f build/refreshed; }\n")
+            (sdk / "export.sh").write_text(
+                "cmake() { test -f build/refreshed; touch build/cli-refreshed; }\n"
+                "idf.py() { test -f build/cli-refreshed; }\n")
             subprocess.run(["bash", str(root / "scripts/build-shell.sh")], check=True)
             self.assertTrue((root / "build/refreshed").is_file())
 
@@ -94,7 +96,7 @@ class ScriptTests(unittest.TestCase):
                 shutil.copyfile(ROOT / "Makefile", root / "Makefile")
                 preserved = ("build/espressif/tool", "build/hardware/backup.bin",
                              "build/build.log", "external/duckdb/source.cpp")
-                generated = ("build/test/test_binary", "build/duckdb/library.a",
+                generated = ("build/test/test_binary", "build/duckdb/library.a", "build/cli/library.a",
                              "build/firmware/firmware.bin", "build/shell/shell.bin",
                              "build/duckdb-micro-shell.tar.gz", "build/duckdb-micro-probe.tar.gz")
                 for name in preserved + generated:

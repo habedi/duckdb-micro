@@ -84,7 +84,7 @@ int main() {
 
     def test_worker_uses_psram_stack_and_cpu_one_and_reports_configuration_failure(self):
         source = (ROOT / "src/firmware/shell/main/duckdb_console.cpp").read_text()
-        settings = source[source.index("auto worker ="):source.index("duckdb::DBConfig config;")]
+        settings = source[source.index("auto worker ="):source.index("if (request.cli)")]
         self.compile_and_run(r'''
 #include <cassert>
 #include <stdexcept>

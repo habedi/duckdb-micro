@@ -1993,6 +1993,11 @@ static void register_commands(void)
     }
 }
 
+size_t shell_command_line_limit(void)
+{
+  return SHELL_MAX_CMDLINE;
+}
+
 void shell_restore_linenoise_callbacks(void)
 {
   linenoiseSetCompletionCallback(&custom_completion);
