@@ -62,8 +62,8 @@
     * [x] Wi-Fi 6 station connection management and credential persistence.
     * [x] Shell commands for wireless networking (`wifi_scan`, `wifi_connect`, `ifconfig`, `ping`).
 * **Remote Data and Protocols**
-    * [ ] HTTP/HTTPS downloader for remote CSV files.
-    * [ ] REST or WebSocket server for queries.
+    * [x] HTTP/HTTPS downloader for remote CSV files (`fetch_csv`).
+    * [x] Read-only REST server for queries (`query_server`).
 
 ---
 
