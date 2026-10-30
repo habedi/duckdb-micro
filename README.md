@@ -10,7 +10,7 @@ DuckDB Micro is an experimental (and partial) port of DuckDB 2.0 to ESP32-P4 (mo
 the [Waveshare ESP32-P4-WIFI6](https://www.waveshare.com/wiki/ESP32-P4-WIFI6) board; see image below).
 
 <div align="center">
-  <img alt="MicroShell" src="docs/assets/images/esp32-p4-wifi6.png" width="40%">
+  <img alt="Waveshare ESP32-P4-WIFI6" src="docs/assets/images/esp32-p4-wifi6.png" width="40%">
 </div>
 
 ### Why?
@@ -21,20 +21,20 @@ lacks a lot of conventional features like a lot of (fast) memory, a full-feature
 
 ### Feature Comparisons
 
-| Feature            | DuckDB                              | DuckDB Micro                                       |
-|--------------------|-------------------------------------|----------------------------------------------------|
-| Platform           | Desktop and server                  | ESP32-P4 with FreeRTOS                             |
-| Query parallelism  | Multiple CPU cores                  | Single thread (by default; max two threads)        |
-| Buffer memory      | Configurable for host RAM           | 8 MB (by default; using PSRAM)                     |
-| Disk spilling      | Supported                           | Disabled                                           |
-| Local data formats | CSV, JSON, Parquet                  | CSV, JSON, and Parquet                             |
-| Extensions         | Supported                           | Only core functions, JSON, and Parquet supported   |
-| Remote files       | Direct HTTP(S) reads using `httpfs` | Files must be downloaded to local storage first    |
-| User interface     | SQL CLI and language APIs           | MicroShell and an optional read-only REST endpoint |
+| Feature           | DuckDB                       | DuckDB Micro                           |
+|-------------------|------------------------------|----------------------------------------|
+| Platform          | Desktop and server           | ESP32-P4 (FreeRTOS)                    |
+| Query parallelism | Multi-core                   | Single thread (up to 2)                |
+| Buffer memory     | Host RAM (configurable)      | 8 MB (PSRAM)                           |
+| Disk spilling     | Supported                    | Disabled                               |
+| Data formats      | CSV, JSON, Parquet, and more | CSV, JSON, and Parquet                 |
+| Extensions        | Supported                    | Core functions, JSON, and Parquet only |
+| Remote files      | Direct HTTP(S) via `httpfs`  | Download to local storage first        |
+| User interface    | CLI and language APIs        | MicroShell and optional REST API       |
 
-See the [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
+See [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
 
-**This project is very experimental and is not affiliated with DuckDB foundations.
+**This project is very experimental.
 You can download the latest pre-built firmware from the [releases page](https://github.com/habedi/duckdb-micro/releases).**
 
 ---
@@ -42,8 +42,8 @@ You can download the latest pre-built firmware from the [releases page](https://
 ### Quickstart
 
 To follow the steps below, you need to have Git and [Nix](https://nixos.org/download/) (with flakes enabled) installed on your machine.
-The instructions are tested on Linux, and the firmware is tested on an ESP32-P4-WIFI6 board with silicon revision v1.3 with 32 MB PSRAM and 32 MB
-NOR flash.
+The instructions are tested on Linux, and the firmware is tested on an ESP32-P4-WIFI6 board (silicon revision v1.3, 32 MB PSRAM, and 32 MB
+NOR flash).
 
 #### 1. Clone the repository
 
@@ -89,7 +89,7 @@ Press Enter twice after opening the console to get to the MicroShell (`msh>`) pr
 
 > [!NOTE]
 > Serial port access needs membership in the `dialout` group (which can be set up with something like `sudo usermod -aG dialout $USER`).
-> Also, change `ttyACM0` to the appropriate serial port for your system, if needed.
+> Also, change `/dev/ttyACM0` to the appropriate serial port for your system, if needed.
 
 ---
 
