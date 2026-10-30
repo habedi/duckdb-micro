@@ -53,6 +53,21 @@ class NetworkTests(unittest.TestCase):
                     length = len(module.CSV) + (10 if path == "/truncated" else 0)
                     handler.send_header.assert_called_once_with("Content-Length", str(length))
 
+    def test_huggingface_download_and_reference_aggregates(self):
+        spec = importlib.util.spec_from_file_location("network", ROOT / "scripts/check-network.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        command = Mock(side_effect=[b"Downloaded 332440 bytes to file", b""])
+        module.download_graph(command, "/sdcard/test")
+        self.assertIn("/raw/668d9c9081be724b5f6a66fa1c8442c2bdf87f90/",
+                      command.call_args_list[0].args[0])
+        self.assertIn("buffer_size=65536, max_line_size=1024", command.call_args_list[1].args[0])
+        self.assertEqual(command.call_args_list[1].kwargs["expected"],
+                         "36101\t40807754\t52997576")
+        for output in (b"download failed", b"Downloaded 123 bytes"):
+            with self.assertRaisesRegex(RuntimeError, "Hugging Face HTTPS download failed"):
+                module.download_graph(Mock(return_value=output), "/sdcard/test")
+
     def test_json_escaping_and_capacity(self):
         self.compile_run(r'''
 #include "network_json.h"

@@ -19,6 +19,19 @@ tpch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tpch)
 stress = tpch.stress
 CSV = b"id,name\n1,one\n2,two\n"
+GRAPH_URL = ("https://huggingface.co/datasets/habedi/graphina-graphs/raw/"
+             "668d9c9081be724b5f6a66fa1c8442c2bdf87f90/wikipedia_chameleon.txt")
+GRAPH_AGGREGATE = "count(*), sum(id1), sum(id2)"
+GRAPH_EXPECTED = "36101\t40807754\t52997576"
+
+
+def download_graph(command, fixture):
+    output = command(f"fetch_csv {GRAPH_URL} {fixture}.graph.csv", timeout=60)
+    if b"Downloaded 332440 bytes" not in output:
+        raise RuntimeError(f"Hugging Face HTTPS download failed: {output!r}")
+    command(f'duckdb -c "SELECT {GRAPH_AGGREGATE} FROM '
+            f'read_csv(\'{fixture}.graph.csv\', buffer_size=65536, max_line_size=1024);"',
+            expected=GRAPH_EXPECTED)
 
 
 class FixtureHandler(BaseHTTPRequestHandler):
@@ -104,12 +117,7 @@ def run(port, capture, fixture):
         finally:
             server.shutdown()
             thread.join()
-    revision = "d54cbbe3df17e8e5ce68312f483b4155836112aa"
-    url = f"https://raw.githubusercontent.com/duckdb/duckdb/{revision}/data/csv/sample-0.csv"
-    output = command(f"fetch_csv {url} {fixture}.https.csv", timeout=60)
-    if b"Downloaded 588 bytes" not in output:
-        raise RuntimeError(f"Verified HTTPS download failed: {output!r}")
-    command(f'duckdb -c "SELECT count(*) FROM read_csv(\'{fixture}.https.csv\');"', expected="3")
+    download_graph(command, fixture)
     output = command(f"fetch_csv https://expired.badssl.com/ {fixture}.expired", timeout=30)
     if b"download failed" not in output or b"Downloaded " in output:
         raise RuntimeError("Expired HTTPS certificate was accepted")
@@ -118,6 +126,9 @@ def run(port, capture, fixture):
         raise RuntimeError("Rejected HTTPS download left a file")
     command(f'duckdb {fixture}.duckdb -c "CREATE TABLE samples AS '
             f'SELECT * FROM read_csv(\'{fixture}.csv\');"', expected="2")
+    command(f'duckdb {fixture}.duckdb -c "CREATE TABLE edges AS SELECT * FROM '
+            f'read_csv(\'{fixture}.graph.csv\', buffer_size=65536, max_line_size=1024);"',
+            expected="36101")
     previous = None
     baseline = None
     streaks = {}
@@ -135,6 +146,9 @@ def run(port, capture, fixture):
         result = rest(address, token, "SELECT sum(id) FROM samples")
         if result["rows"] != [["3"]] or result["truncated"]:
             raise RuntimeError(f"Incorrect REST result: {result}")
+        result = rest(address, token, f"SELECT {GRAPH_AGGREGATE} FROM edges")
+        if result["rows"] != [GRAPH_EXPECTED.split("\t")] or result["truncated"]:
+            raise RuntimeError(f"Incorrect Hugging Face graph result: {result}")
         result = rest(address, token, "SELECT NULL AS missing, 'a' || chr(10) || chr(34) AS escaped")
         if result["rows"] != [[None, 'a\n"']]:
             raise RuntimeError(f"Incorrect JSON escaping: {result}")
@@ -154,7 +168,7 @@ def run(port, capture, fixture):
             baseline = sample
         else:
             stress.check_memory(baseline, sample, streaks, 5)
-    for suffix in ("csv", "chunk.csv", "https.csv", "duckdb"):
+    for suffix in ("csv", "chunk.csv", "graph.csv", "duckdb"):
         command(f"rm {fixture}.{suffix}")
 
 

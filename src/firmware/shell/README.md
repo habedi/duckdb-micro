@@ -110,6 +110,16 @@ HTTPS verifies the server hostname, certificate chain, and certificate dates usi
 On the first HTTPS download after boot, it synchronizes the system clock with `pool.ntp.org`.
 DNS and outbound NTP access are needed for that initial synchronization.
 
+Hugging Face text files can also contain CSV data. Use the raw file URL rather than the HTML `blob` page:
+
+```text
+msh> fetch_csv https://huggingface.co/datasets/habedi/graphina-graphs/raw/main/wikipedia_chameleon.txt /sdcard/chameleon.csv
+msh> duckdb -c "SELECT count(*) FROM read_csv('/sdcard/chameleon.csv', buffer_size=65536, max_line_size=1024);"
+```
+
+The network check uses a pinned revision of this graph dataset and verifies its edge count and endpoint sums.
+Downloads stream to local storage; direct SQL scans of HTTP URLs are not supported.
+
 ### REST Query Server
 
 The REST server is off at boot. Start it with an existing database file:
