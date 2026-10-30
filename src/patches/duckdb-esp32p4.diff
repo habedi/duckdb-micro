@@ -1182,7 +1182,15 @@ diff --git a/src/main/settings/custom_settings.cpp b/src/main/settings/custom_se
 diff --git a/third_party/concurrentqueue/lightweightsemaphore.h b/third_party/concurrentqueue/lightweightsemaphore.h
 --- a/third_party/concurrentqueue/lightweightsemaphore.h
 +++ b/third_party/concurrentqueue/lightweightsemaphore.h
-@@ -35,7 +35,7 @@
+@@ -9,6 +9,7 @@
+ #include <atomic>
+ #include <cassert>
+ #include <type_traits> // For std::make_signed<T>
++#include <new>
+
+ // VS2012 doesn't support deleted functions.
+ // In this case, we declare the function normally but don't define it.
+@@ -35,7 +36,7 @@
  }
  #elif defined(__MACH__)
  #include <mach/mach.h>
@@ -1191,7 +1199,7 @@ diff --git a/third_party/concurrentqueue/lightweightsemaphore.h b/third_party/co
  #include <semaphore.h>
  #include <chrono>
  #elif defined(__MVS__)
-@@ -174,7 +174,7 @@
+@@ -174,7 +175,7 @@
  		}
  	}
  };
@@ -1200,3 +1208,15 @@ diff --git a/third_party/concurrentqueue/lightweightsemaphore.h b/third_party/co
  //---------------------------------------------------------
  // Semaphore (POSIX, Linux, zOS aka MVS)
  //---------------------------------------------------------
+@@ -191,6 +192,11 @@
+ 	{
+ 		assert(initialCount >= 0);
+ 		int rc = sem_init(&m_sema, 0, initialCount);
++#ifdef ESP_PLATFORM
++		if (rc != 0) {
++			throw std::bad_alloc();
++		}
++#endif
+ 		assert(rc == 0);
+ 		(void)rc;
+ 	}

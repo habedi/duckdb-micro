@@ -1,11 +1,14 @@
 """Check ESP32 worker settings and thread limits without a board."""
 
 import os
+import importlib.util
+import io
 from pathlib import Path
 import shlex
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import Mock, patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +35,39 @@ class DualCoreTests(unittest.TestCase):
             subprocess.run([*command, "-std=c++17", "-Wall", "-Wextra", "-Werror",
                             str(path), "-o", str(binary)], check=True)
             subprocess.run([str(binary)], check=True)
+
+    def test_failed_worker_semaphore_allocation_throws_without_assertions(self):
+        header = ROOT / "external/duckdb/third_party/concurrentqueue/lightweightsemaphore.h"
+        self.compile_and_run(r'''
+#define NDEBUG
+#define ESP_PLATFORM 1
+#define sem_init injected_sem_init
+''' + f'#include "{header}"\n' + r'''
+#undef sem_init
+extern "C" int injected_sem_init(sem_t *, int, unsigned) noexcept { return -1; }
+int main() {
+    try { duckdb_moodycamel::details::Semaphore sem; }
+    catch (const std::bad_alloc &) { return 0; }
+    return 1;
+}
+''')
+
+    def test_hardware_check_requires_cpu_one_psram_execution_after_restart(self):
+        spec = importlib.util.spec_from_file_location("dualcore", ROOT / "scripts/check-dualcore.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        marker = b"Query worker: CPU 1, PSRAM stack yes"
+        for response, passes in ((marker, True), (b"CPU 0", False), (b"PSRAM stack no", False)):
+            with self.subTest(response=response), \
+                    patch.object(module.stress, "command", return_value=response) as command:
+                if passes:
+                    module.session(Mock(), io.BytesIO())
+                    lines = [call.args[2] for call in command.call_args_list]
+                    self.assertIn("SET threads=1;", lines)
+                    self.assertIn("SET threads=2;", lines)
+                else:
+                    with self.assertRaisesRegex(RuntimeError, "Missing CPU 1"):
+                        module.session(Mock(), io.BytesIO())
 
     def test_worker_uses_psram_stack_and_cpu_one_and_reports_configuration_failure(self):
         source = (ROOT / "src/firmware/shell/main/duckdb_console.cpp").read_text()
