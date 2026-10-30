@@ -23,7 +23,7 @@ lacks a lot of conventional features like a lot of (fast) memory, a full-feature
 
 | Feature           | DuckDB                                    | DuckDB Micro                                              |
 |-------------------|-------------------------------------------|-----------------------------------------------------------|
-| Platform          | Desktop and server                        | ESP32-P4 (FreeRTOS)                                       |
+| Platform          | Desktop and server (Linux/Windows/macOS)  | ESP32-P4 (FreeRTOS)                                       |
 | Architecture      | 64-bit                                    | 32-bit (RISC-V)                                           |
 | Query parallelism | Multi-core                                | Single thread (up to 2)                                   |
 | Buffer memory     | Host RAM (configurable)                   | 8 MB (PSRAM)                                              |
@@ -37,7 +37,7 @@ lacks a lot of conventional features like a lot of (fast) memory, a full-feature
 See [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
 
 > [!WARNING]
-> This project is very experimental.
+> **This project is very experimental.**
 
 **You can download the latest pre-built firmware from the [releases page](https://github.com/habedi/duckdb-micro/releases).**
 
