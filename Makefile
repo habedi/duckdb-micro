@@ -16,7 +16,7 @@ export CFLAGS CXXFLAGS SANFLAGS LDFLAGS TEST_RUNNER
 FORMAT_FILES := $(wildcard src/firmware/main/*.cpp src/firmware/shell/main/*.cpp src/firmware/shell/main/duckdb_console.h test/*.cpp)
 
 .PHONY: help clean clean-all submodules probe-build shell-build firmware-package shell-flash flash probe-flash console \
- check-shell check-probe check-stress check-network check-dualcore prepare-tpch check-tpch espidf-install test probe-test shell-test \
+ check-shell check-cli check-probe check-stress check-network check-dualcore prepare-tpch check-tpch espidf-install test probe-test shell-test \
   asan ubsan memcheck format lint setup-hooks test-hooks
 
 help: ## Show available commands
@@ -65,6 +65,9 @@ check-shell: ## Run hardware serial check for the shell (e.g. make check-shell [
 	export IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}"; \
 	source "$$IDF_PATH/export.sh" >/dev/null 2>&1; \
 	python scripts/check-shell.py $(TTY)
+
+check-cli: ## Verify the upstream CLI, output modes, file commands, and session cleanup
+	$(PYTHON) scripts/check-cli.py $(TTY)
 
 check-stress: ## Stress SQL and storage, and record heap trends (STRESS_ARGS='--duration 28800' for overnight)
 	$(PYTHON) scripts/check-stress.py $(TTY) $(STRESS_ARGS)
