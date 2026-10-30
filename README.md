@@ -35,7 +35,7 @@ lacks a lot of conventional features like a lot of (fast) memory, a full-feature
 | Data formats      | CSV, JSON, Parquet, and more                   | CSV, JSON, and Parquet                                    |
 | Extensions        | Supported                                      | Core functions, JSON, and Parquet only                    |
 | Remote files      | Direct over HTTP(S) access (via `httpfs`)      | Download to local storage first                           |
-| User interface    | CLI and language APIs                          | MicroShell CLI and optional REST API                          |
+| User interface    | CLI and language APIs                          | MicroShell CLI and optional REST API                      |
 
 See [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
 
