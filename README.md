@@ -9,21 +9,6 @@
 DuckDB Micro is an experimental (and partial) port of DuckDB 2.0 to ESP32-P4 (more specifically,
 the [Waveshare ESP32-P4-WIFI6](https://www.waveshare.com/wiki/ESP32-P4-WIFI6) board; see image below).
 
-| Feature                 | Vanilla DuckDB 2.0                    | DuckDB Micro                                     |
-|-------------------------|---------------------------------------|--------------------------------------------------|
-| Platform                | Desktop and server operating systems  | ESP32-P4 with FreeRTOS                           |
-| Query Parallelism       | Multiple CPU cores                    | One thread by default; optional CPU 1 worker     |
-| Buffer Memory           | Configurable for host RAM             | 8 MB by default, using PSRAM                     |
-| Temporary Disk Spilling | Supported                             | Disabled                                         |
-| Local Data Formats      | CSV, JSON, Parquet, and extensions    | CSV, JSON, and Parquet                           |
-| Extensions              | Installable and loadable              | Bundled core functions, JSON, and Parquet only   |
-| Remote Files            | Direct HTTP(S) scans through `httpfs` | HTTP(S) downloads to local storage               |
-| User Interface          | SQL CLI and language APIs             | MicroShell and an opt-in read-only REST endpoint |
-
-See the upstream [configuration](https://duckdb.org/docs/2.0/configuration/overview) and
-[`httpfs` documentation](https://duckdb.org/docs/2.0/core_extensions/httpfs/overview), and the
-[MicroShell guide](src/firmware/shell/README.md) for details and limits.
-
 <div align="center">
   <img alt="MicroShell" src="docs/assets/images/esp32-p4-wifi6.png" width="40%">
 </div>
@@ -33,6 +18,19 @@ See the upstream [configuration](https://duckdb.org/docs/2.0/configuration/overv
 DuckDB normally needs at least 125 MB of RAM per thread to work properly, and it officially only supports 64-bit architectures.
 This project is an attempt to see how much of DuckDB's functionality can be made available on a low-resource device like an ESP32 microcontroller that
 lacks a lot of conventional features like a lot of (fast) memory, a full-featured virtual memory system, etc.
+
+### Feature Comparisons
+
+| Feature            | DuckDB                              | DuckDB Micro                                       |
+|--------------------|-------------------------------------|----------------------------------------------------|
+| Platform           | Desktop and server                  | ESP32-P4 with FreeRTOS                             |
+| Query parallelism  | Multiple CPU cores                  | Single thread (by default; max two threads)        |
+| Buffer memory      | Configurable for host RAM           | 8 MB (by default; using PSRAM)                     |
+| Disk spilling      | Supported                           | Disabled                                           |
+| Local data formats | CSV, JSON, Parquet                  | CSV, JSON, and Parquet                             |
+| Extensions         | Supported                           | Only core functions, JSON, and Parquet supported   |
+| Remote files       | Direct HTTP(S) reads using `httpfs` | Files must be downloaded to local storage first    |
+| User interface     | SQL CLI and language APIs           | MicroShell and an optional read-only REST endpoint |
 
 See the [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
 
