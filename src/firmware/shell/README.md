@@ -331,6 +331,21 @@ this low-water mark includes loading and earlier queries, rather than measuring 
 Use `--threads 2` in `TPCH_ARGS` to benchmark the CPU 1 worker. Thread count is saved
 with the run settings. Parallel execution can increase memory use and does not guarantee a speedup.
 
+To generate or view a Markdown report from benchmark results:
+
+```shell
+make report-tpch
+```
+
+This command parses the latest benchmark run in `build/hardware/`, saves a companion
+Markdown report (`tpch-*.md`), and prints the report to standard output. Use `TPCH_REPORT`
+to target a specific benchmark run, or `TPCH_REPORT_ARGS` to set output options:
+
+```shell
+make report-tpch TPCH_REPORT=build/hardware/tpch-25e2cad863d847749a8e0e23832e52e0.csv
+make report-tpch TPCH_REPORT_ARGS='--output tpch-summary.md'
+```
+
 ### Dual-Core Verification
 
 ```shell

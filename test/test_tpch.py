@@ -268,6 +268,182 @@ class TpchTests(unittest.TestCase):
         with patch("sys.stderr", io.StringIO()), self.assertRaises(SystemExit):
             tpch.arguments(["prepare", "--scale", "1"])
 
+    def test_format_bytes_handles_nulls_scales_and_details(self):
+        self.assertEqual(tpch.format_bytes(None), "N/A")
+        self.assertEqual(tpch.format_bytes(500), "500 B")
+        self.assertEqual(tpch.format_bytes(2048), "2.0 KB")
+        self.assertEqual(tpch.format_bytes(1048576 * 2), "2.00 MB")
+        self.assertEqual(tpch.format_bytes_detail(None), "N/A")
+        self.assertEqual(tpch.format_bytes_detail(2048), "2,048 B (2.0 KB)")
+
+    def test_parse_report_data_and_generate_markdown_with_manifest(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            csv_path = root / "tpch-test.csv"
+            json_path = root / "tpch-test.json"
+
+            csv_content = (
+                "query,phase,iteration,query_ms,tier,free_bytes,minimum_free_bytes,"
+                "largest_block_bytes\n"
+                "1,warmup,0,100,Internal SRAM,500000,100000,250000\n"
+                "1,warmup,0,100,SPI RAM (PSRAM),30000000,20000000,25000000\n"
+                "1,measured,1,90,Internal SRAM,500000,100000,250000\n"
+                "1,measured,1,90,SPI RAM (PSRAM),30000000,20000000,25000000\n"
+                "1,measured,2,92,Internal SRAM,500000,100000,250000\n"
+                "1,measured,2,92,SPI RAM (PSRAM),30000000,20000000,25000000\n"
+            )
+            csv_path.write_text(csv_content)
+
+            meta = {
+                "manifest": {
+                    "scale": 0.001,
+                    "host_version": {"library_version": "v1.5.5", "codename": "Variegata"},
+                    "database_sha256": "fakehash",
+                    "queries": [{"number": 1, "sql": "SELECT 1;", "rows": [["1"]]}],
+                },
+                "database": "/sdcard/tpch-test.duckdb",
+                "repeats": 2,
+                "memory_limit_mb": 8,
+                "threads": 1,
+            }
+            json_path.write_text(json.dumps(meta))
+
+            queries_data, parsed_meta = tpch.parse_report_data(csv_path, json_path)
+            self.assertIn(1, queries_data)
+            self.assertEqual(queries_data[1]["warmup_ms"], 100)
+            self.assertEqual(queries_data[1]["measured_ms"], [90, 92])
+            self.assertEqual(parsed_meta["manifest"]["scale"], 0.001)
+
+            markdown = tpch.generate_markdown_report(csv_path, json_path)
+            self.assertIn("# TPC-H Benchmark Report", markdown)
+            self.assertIn("## Benchmark Environment", markdown)
+            self.assertIn("## Performance Summary", markdown)
+            self.assertIn("## Memory Statistics", markdown)
+            self.assertIn("## Detailed Iteration Results", markdown)
+            self.assertIn("## Query Definitions", markdown)
+            self.assertIn("Pricing Summary Report", markdown)
+            self.assertIn("| Q01 | Pricing Summary Report | 100 | 90 | 91.0 | 92 |", markdown)
+            self.assertIn("**Total**", markdown)
+            self.assertIn("SELECT 1;", markdown)
+
+    def test_generate_markdown_without_json_and_without_min_free(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            csv_path = root / "tpch-old.csv"
+            csv_content = (
+                "query,phase,iteration,query_ms,tier,free_bytes,largest_block_bytes\n"
+                "6,warmup,0,200,Internal SRAM,490000,240000\n"
+                "6,warmup,0,200,SPI RAM (PSRAM),31000000,28000000\n"
+                "6,measured,1,195,Internal SRAM,490000,240000\n"
+                "6,measured,1,195,SPI RAM (PSRAM),31000000,28000000\n"
+            )
+            csv_path.write_text(csv_content)
+
+            markdown = tpch.generate_markdown_report(csv_path, None)
+            self.assertIn("# TPC-H Benchmark Report", markdown)
+            self.assertIn("Forecasting Revenue Change", markdown)
+            self.assertIn("SRAM Final Free", markdown)
+            self.assertNotIn("SRAM Low Watermark", markdown)
+            self.assertIn("| Q06 |", markdown)
+
+    def test_parse_report_data_rejects_missing_or_empty_csv(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            missing = root / "missing.csv"
+            with self.assertRaisesRegex(RuntimeError, "Report CSV file not found"):
+                tpch.parse_report_data(missing)
+
+            empty = root / "empty.csv"
+            empty.write_text("")
+            with self.assertRaisesRegex(RuntimeError, "Report CSV file has no data rows"):
+                tpch.parse_report_data(empty)
+
+    def test_resolve_report_paths(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            csv_a = root / "tpch-aaa.csv"
+            csv_a.write_text("dummy")
+            csv_b = root / "tpch-bbb.csv"
+            csv_b.write_text("dummy")
+            json_b = root / "tpch-bbb.json"
+            json_b.write_text("{}")
+
+            resolved_csv, resolved_json = tpch.resolve_report_paths(hardware_dir=root)
+            self.assertEqual(resolved_csv, csv_b)
+            self.assertEqual(resolved_json, json_b)
+
+            resolved_csv, resolved_json = tpch.resolve_report_paths("tpch-aaa", hardware_dir=root)
+            self.assertEqual(resolved_csv, csv_a)
+            self.assertIsNone(resolved_json)
+
+            resolved_csv, resolved_json = tpch.resolve_report_paths("bbb", hardware_dir=root)
+            self.assertEqual(resolved_csv, csv_b)
+            self.assertEqual(resolved_json, json_b)
+
+            resolved_csv, _ = tpch.resolve_report_paths(str(csv_a), hardware_dir=root)
+            self.assertEqual(resolved_csv, csv_a)
+
+            with self.assertRaisesRegex(RuntimeError, "benchmark file not found"):
+                tpch.resolve_report_paths("nonexistent", hardware_dir=root)
+
+            empty_dir = root / "empty_dir"
+            empty_dir.mkdir()
+            with self.assertRaisesRegex(RuntimeError, "No TPC-H benchmark results found"):
+                tpch.resolve_report_paths(hardware_dir=empty_dir)
+
+    def test_report_command_execution_and_flags(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            csv_path = root / "tpch-run.csv"
+            csv_path.write_text(
+                "query,phase,iteration,query_ms,tier,free_bytes,minimum_free_bytes,"
+                "largest_block_bytes\n"
+                "1,warmup,0,100,Internal SRAM,500000,100000,250000\n"
+                "1,warmup,0,100,SPI RAM (PSRAM),30000000,20000000,25000000\n"
+                "1,measured,1,90,Internal SRAM,500000,100000,250000\n"
+                "1,measured,1,90,SPI RAM (PSRAM),30000000,20000000,25000000\n"
+            )
+
+            # Test writing to custom output file
+            custom_out = root / "custom.md"
+            args = argparse.Namespace(input=csv_path, input_opt=None, output=custom_out,
+                                      stdout=False, quiet=False)
+            with patch("sys.stderr", io.StringIO()):
+                tpch.report(args)
+            self.assertTrue(custom_out.is_file())
+            self.assertIn("# TPC-H Benchmark Report", custom_out.read_text())
+
+            # Test writing to stdout only via -
+            args = argparse.Namespace(input=csv_path, input_opt=None, output=Path("-"),
+                                      stdout=False, quiet=False)
+            stdout = io.StringIO()
+            with patch("sys.stdout", stdout):
+                tpch.report(args)
+            self.assertIn("# TPC-H Benchmark Report", stdout.getvalue())
+
+            # Test default output path
+            default_out = root / "tpch-run.md"
+            self.assertFalse(default_out.exists())
+            args = argparse.Namespace(input=csv_path, input_opt=None, output=None,
+                                      stdout=False, quiet=True)
+            with patch("sys.stderr", io.StringIO()):
+                tpch.report(args)
+            self.assertTrue(default_out.is_file())
+
+    def test_arguments_report_subcommand(self):
+        parsed = tpch.arguments(["report"])
+        self.assertEqual(parsed.action, "report")
+        self.assertIsNone(parsed.input)
+        self.assertIsNone(parsed.output)
+        self.assertFalse(parsed.stdout)
+        self.assertFalse(parsed.quiet)
+
+        parsed = tpch.arguments(["report", "my-run.csv", "-o", "out.md", "--stdout", "-q"])
+        self.assertEqual(parsed.input, Path("my-run.csv"))
+        self.assertEqual(parsed.output, Path("out.md"))
+        self.assertTrue(parsed.stdout)
+        self.assertTrue(parsed.quiet)
+
 
 if __name__ == "__main__":
     unittest.main()

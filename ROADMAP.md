@@ -80,7 +80,7 @@
     * [x] Interactive shell verification script (`scripts/check-shell.py`).
     * [x] Feature verification script (`scripts/check-features.py`) testing LittleFS, JSON, and Parquet on a physical board.
     * [x] Stress testing and memory fragmentation benchmarks (`make check-stress`).
-    * [x] TPC-H subset runner with automatic serial fixture loading, host reference results, query timings, and memory reports (`make check-tpch`).
+    * [x] TPC-H subset runner with automatic serial fixture loading, host reference results, query timings, and memory reports (`make check-tpch`, `make report-tpch`).
     * [x] Hardware validation of TPC-H queries 1, 6, and 12 at scale factor 0.001.
     * [x] Hardware validation of TPC-H queries 1, 3, 6, 12, and 14 at scale factor 0.001 with a session-only 12 MB buffer limit.
     * [x] Hardware validation of TPC-H queries 1, 6, and 12 at scale factor 0.01 with a session-only 12 MB buffer limit.
