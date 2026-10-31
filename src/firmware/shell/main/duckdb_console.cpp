@@ -258,7 +258,7 @@ void sql_task(void* argument) {
         shell_restore_linenoise_callbacks();
     }
     xTaskNotifyGive(request.caller);
-    vTaskDeleteWithCaps(nullptr);
+    vTaskSuspend(nullptr);
 }
 
 int command(int argc, char** argv) {
@@ -298,15 +298,17 @@ int command(int argc, char** argv) {
         return 1;
     }
     Request request{db_path, sql, cli, xTaskGetCurrentTaskHandle(), 1};
+    TaskHandle_t task = nullptr;
     // Keep scarce internal RAM available for DuckDB's mutexes and device drivers.
-    if (xTaskCreatePinnedToCoreWithCaps(sql_task, "duckdb", cli ? 98304 : 65536, &request, 1,
-                                        nullptr, 0,
-                                        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
+    if (xTaskCreatePinnedToCoreWithCaps(sql_task, "duckdb", cli ? 98304 : 65536, &request, 1, &task,
+                                        0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
         sql_busy.clear();
         printf("duckdb: cannot allocate SQL task stack\n");
         return 1;
     }
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    // Finish cleanup before another session starts, without an extra deletion task.
+    vTaskDeleteWithCaps(task);
     sql_busy.clear();
     return request.status;
 }

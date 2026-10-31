@@ -169,15 +169,15 @@ def main():
             command("SELECT sum(x) FROM persisted;", b"42")
             command(".quit", prompt=b"msh> ")
             sample = stress.memory_sample(command("free", prompt=b"msh> "))
-            if baseline is None:
-                baseline = sample
-            else:
-                stress.check_memory(baseline, sample, streaks, 5)
             elapsed = time.monotonic() - started
             for tier, metrics in sample.items():
                 writer.writerow((session + 1, f"{elapsed:.3f}", tier,
                                  metrics["free"], metrics["largest"]))
             report.flush()
+            if baseline is None:
+                baseline = sample
+            else:
+                stress.check_memory(baseline, sample, streaks, 5)
             print(f"Session {session + 1} ({elapsed:.1f}s): correct results, reopen, and cleanup; "
                   f"internal free={sample['Internal SRAM']['free']}", flush=True)
             session += 1
