@@ -7,6 +7,7 @@ TTY ?= $(DEFAULT_TTY)
 BAUD ?= 115200
 ESPTOOL_BAUD ?= 921600
 PYTHON ?= python3
+CLI_ARGS ?=
 STRESS_ARGS ?=
 TPCH_ARGS ?=
 TPCH_MANIFEST ?= build/tpch/manifest.json
@@ -67,7 +68,7 @@ check-shell: ## Run hardware serial check for the shell (e.g. make check-shell [
 	python scripts/check-shell.py $(TTY)
 
 check-cli: ## Verify the upstream CLI, output modes, file commands, and session cleanup
-	$(PYTHON) scripts/check-cli.py $(TTY)
+	$(PYTHON) scripts/check-cli.py $(TTY) $(CLI_ARGS)
 
 check-stress: ## Stress SQL and storage, and record heap trends (STRESS_ARGS='--duration 28800' for overnight)
 	$(PYTHON) scripts/check-stress.py $(TTY) $(STRESS_ARGS)

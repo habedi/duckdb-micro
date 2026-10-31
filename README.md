@@ -85,7 +85,9 @@ The board resets and starts the firmware after flashing.
 make console TTY=/dev/ttyACM0
 ```
 
-Press Enter twice after opening the console to get to the MicroShell (`msh>`) prompt.
+Press Enter after opening the console to get to the MicroShell (`msh>`) prompt.
+Run `duckdb` for the upstream SQL console. End SQL with `;`, and use `.quit` to return.
+`duckdb --compact` selects the compact console, and `duckdb -c "SELECT 42;"` runs one query.
 
 <div align="center">
   <img alt="MicroShell" src="docs/assets/images/msh-01.png" width="80%">

@@ -265,15 +265,18 @@ int command(int argc, char** argv) {
     const char* file_arg = nullptr;
     const char* sql = nullptr;
     bool cli = false;
+    bool compact = false;
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "--cli") == 0 && !cli) {
+        if (strcmp(argv[i], "--cli") == 0 && !cli && !compact) {
             cli = true;
+        } else if (strcmp(argv[i], "--compact") == 0 && !cli && !compact) {
+            compact = true;
         } else if (strcmp(argv[i], "-c") == 0 && i + 1 < argc && !sql) {
             sql = argv[++i];
         } else if (argv[i][0] != '-' && !file_arg) {
             file_arg = argv[i];
         } else {
-            printf("Usage: duckdb [--cli] [FILE] [-c \"SQL\"]\n");
+            printf("Usage: duckdb [--cli|--compact] [FILE] [-c \"SQL\"]\n");
             return 1;
         }
     }
@@ -281,6 +284,7 @@ int command(int argc, char** argv) {
         printf("duckdb: --cli opens an interactive session; omit -c\n");
         return 1;
     }
+    cli = cli || (!compact && !sql);
     char resolved_path[512];
     const char* db_path = nullptr;
     if (file_arg && strcmp(file_arg, ":memory:") != 0) {
@@ -400,7 +404,7 @@ extern "C" void duckdb_console_register(void) {
     }
     esp_console_cmd_t cmd{};
     cmd.command = "duckdb";
-    cmd.help = "Open a SQL prompt or run SQL: duckdb [--cli] [FILE] [-c \"SQL\"]";
+    cmd.help = "Open a SQL prompt or run SQL: duckdb [--cli|--compact] [FILE] [-c \"SQL\"]";
     cmd.func = command;
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }

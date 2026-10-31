@@ -120,7 +120,7 @@ class StressTests(unittest.TestCase):
         for cycle in (1, 2):
             stress.workload(port, io.BytesIO(), "/sdcard/unique", cycle)
         self.assertEqual(committed, [1, 2])
-        self.assertEqual(sum(call.args[0] == b"duckdb /sdcard/unique.duckdb\r"
+        self.assertEqual(sum(call.args[0] == b"duckdb --compact /sdcard/unique.duckdb\r"
                              for call in port.write.call_args_list), 4)
         corrupt = True
         with self.assertRaisesRegex(RuntimeError, "Unexpected result"):

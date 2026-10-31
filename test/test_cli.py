@@ -1,5 +1,8 @@
 """Host checks for the upstream CLI input and ESP32 adapter."""
 
+import contextlib
+import importlib.util
+import io
 import os
 from pathlib import Path
 import shlex
@@ -26,6 +29,47 @@ class CliTests(unittest.TestCase):
             command += shlex.split(os.environ.get("LDFLAGS", ""))
             subprocess.run(command, check=True)
             subprocess.run([*RUNNER, str(binary), *arguments], check=True)
+
+    def test_console_selection_and_one_shot_compatibility(self):
+        source = (ROOT / "src/firmware/shell/main/duckdb_console.cpp").read_text()
+        parser = source[source.index("int command(int argc, char** argv) {"):]
+        parser = parser[:parser.index("    char resolved_path[512];")]
+        self.compile_run(r'''
+#include <cassert>
+#include <cstdio>
+#include <cstring>
+#include <initializer_list>
+''' + parser + r'''
+    return cli ? 2 : 0;
+}
+int main() {
+    auto run = [](std::initializer_list<const char*> input) {
+        char* args[8]; int n = 0;
+        for (auto arg : input) args[n++] = const_cast<char*>(arg);
+        return command(n, args);
+    };
+    assert(run({"duckdb"}) == 2);
+    assert(run({"duckdb", "/sdcard/test.duckdb"}) == 2);
+    assert(run({"duckdb", "--cli"}) == 2);
+    assert(run({"duckdb", "--compact"}) == 0);
+    assert(run({"duckdb", "-c", "SELECT 42"}) == 0);
+    assert(run({"duckdb", "--compact", "-c", "SELECT 42"}) == 0);
+    assert(run({"duckdb", "--cli", "-c", "SELECT 42"}) == 1);
+    assert(run({"duckdb", "--cli", "--compact"}) == 1);
+    assert(run({"duckdb", "--compact", "--compact"}) == 1);
+    assert(run({"duckdb", "-c"}) == 1);
+}
+''')
+
+    def test_soak_duration_validation(self):
+        spec = importlib.util.spec_from_file_location("cli_check", ROOT / "scripts/check-cli.py")
+        cli = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cli)
+        self.assertIsNone(cli.arguments(["fake"]).duration)
+        self.assertEqual(cli.arguments(["fake", "--duration", "3600"]).duration, 3600)
+        for value in ("0", "-1", "nan", "inf"):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                cli.arguments(["fake", "--duration", value])
 
     def test_catalog_completion_is_bounded_and_preserves_the_last_result(self):
         source = (ROOT / "src/firmware/shell/cli/complete.cpp").read_text()

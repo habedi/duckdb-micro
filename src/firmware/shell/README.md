@@ -71,10 +71,10 @@ With another serial terminal, select CR line endings to avoid an extra empty pro
 
 ### Interactive DuckDB Console
 
-Run `duckdb` from `msh>` to enter the interactive SQL console:
+Run `duckdb --compact` from `msh>` to enter the compact SQL console:
 
 ```text
-msh> duckdb
+msh> duckdb --compact
 Opening DuckDB: internal=125432 PSRAM=31457280
 DuckDB 2.0.0, in-memory database; storage under /sdcard and /data.
 One SQL statement per line. .quit returns to msh; tables disappear on exit.
@@ -83,7 +83,7 @@ duckdb>
 
 Features and behavior of the console:
 
-- Persistent databases: Run `duckdb /sdcard/database.db` to open or create an on-disk database.
+- Persistent databases: Run `duckdb --compact /sdcard/database.db` to open or create an on-disk database.
 - One-shot execution: Run `duckdb -c "SELECT 42;"` to execute SQL and return to `msh>`.
 - SQL input: Enter submits one complete statement on the current line. The final semicolon is optional.
   Multiple statements on one line are rejected before execution. Multiline SQL is unsupported.
@@ -102,11 +102,12 @@ For an open network, pass an explicit empty password: `wifi_connect "SSID" ""`.
 
 ### Upstream DuckDB CLI
 
-Run `duckdb --cli` or `duckdb --cli /sdcard/database.duckdb` for the ported upstream CLI.
-The plain `duckdb` command keeps the compact console described above.
+Run `duckdb` or `duckdb /sdcard/database.duckdb` for the ported upstream CLI.
+This is the default interactive console. `--cli` remains an alias, and `--compact` selects
+the compact console described above. `duckdb -c "SQL"` retains its one-shot behavior.
 
 ```text
-msh> duckdb --cli
+msh> duckdb
 DuckDB upstream CLI. End SQL with ;. .help lists commands; .quit returns to msh.
 duckdb> SELECT
    ...> 6 * 7 AS answer;
@@ -135,6 +136,9 @@ return to MicroShell. The compact console retains its serial pager.
 
 Run `make check-cli TTY=/dev/ttyACM0` to check output modes, multiline SQL, file commands,
 database reopening, and heap usage across repeated sessions.
+Use `make check-cli TTY=/dev/ttyACM0 CLI_ARGS="--duration 3600"` for an hour of mixed
+sessions, including warm-up. Each completed session is recorded in a CSV beside the serial log
+under `build/hardware/`; the runner removes its test files on success.
 
 ### Remote CSV Downloads
 
