@@ -87,7 +87,7 @@ make console TTY=/dev/ttyACM0
 
 Press Enter after opening the console to get to the MicroShell (`msh>`) prompt.
 
-<a href="https://asciinema.org/a/1270570" target="_blank"><img src="https://asciinema.org/a/1270570.svg" /></a>
+[![Simple Demo 1](https://asciinema.org/a/DHMxhBJdkCUTsZAu.svg)](https://asciinema.org/a/DHMxhBJdkCUTsZAu)
 
 [//]: # (<div align="center">)
 
