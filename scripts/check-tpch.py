@@ -372,6 +372,7 @@ def generate_markdown_report(csv_path, json_path=None):
         "| Property | Value |",
         "|---|---|",
         "| Target Hardware | Waveshare ESP32-P4-WIFI6 (32 MB PSRAM, 32 MB Flash) |",
+        "| Target Engine | DuckDB 2.0 (FreeRTOS) |",
     ]
 
     scale = manifest.get("scale", meta.get("scale"))
@@ -386,7 +387,7 @@ def generate_markdown_report(csv_path, json_path=None):
     if "database" in meta:
         lines.append(f"| Database Path | `{meta['database']}` |")
     if host_ver_str:
-        lines.append(f"| Host DuckDB Version | {host_ver_str} |")
+        lines.append(f"| Host Reference DuckDB | {host_ver_str} |")
     if manifest.get("database_sha256"):
         lines.append(f"| Database SHA-256 | `{manifest['database_sha256']}` |")
     lines.append(f"| Benchmark Run Source | `{Path(csv_path).name}` |")
