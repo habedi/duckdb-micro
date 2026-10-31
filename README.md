@@ -38,7 +38,6 @@ lacks a lot of conventional features like a lot of (fast) memory, a full-feature
 | User interface    | CLI and language APIs                          | MicroShell CLI and optional REST API                      |
 
 See [ROADMAP.md](ROADMAP.md) for the list of implemented and planned features.
-See [docs/benchmarks.md](docs/benchmarks.md) for benchmark results and performance comparisons.
 
 **You can download the latest pre-built firmware from the [releases page](https://github.com/habedi/duckdb-micro/releases).**
 
@@ -99,6 +98,12 @@ Press Enter after opening the console to get to the MicroShell (`msh>`) prompt.
 > [!NOTE]
 > Serial port access needs membership in the `dialout` group (which can be set up with something like `sudo usermod -aG dialout $USER`).
 > Also, change `/dev/ttyACM0` to the appropriate serial port for your system, if needed.
+
+---
+
+### Performance Evaluation
+
+See [docs/benchmarks.md](docs/benchmarks.md) for benchmark results and performance comparisons.
 
 ---
 
