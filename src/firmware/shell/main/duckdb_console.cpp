@@ -258,22 +258,25 @@ void sql_task(void* argument) {
         shell_restore_linenoise_callbacks();
     }
     xTaskNotifyGive(request.caller);
-    vTaskDeleteWithCaps(nullptr);
+    vTaskSuspend(nullptr);
 }
 
 int command(int argc, char** argv) {
     const char* file_arg = nullptr;
     const char* sql = nullptr;
     bool cli = false;
+    bool compact = false;
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "--cli") == 0 && !cli) {
+        if (strcmp(argv[i], "--cli") == 0 && !cli && !compact) {
             cli = true;
+        } else if (strcmp(argv[i], "--compact") == 0 && !cli && !compact) {
+            compact = true;
         } else if (strcmp(argv[i], "-c") == 0 && i + 1 < argc && !sql) {
             sql = argv[++i];
         } else if (argv[i][0] != '-' && !file_arg) {
             file_arg = argv[i];
         } else {
-            printf("Usage: duckdb [--cli] [FILE] [-c \"SQL\"]\n");
+            printf("Usage: duckdb [--cli|--compact] [FILE] [-c \"SQL\"]\n");
             return 1;
         }
     }
@@ -281,6 +284,7 @@ int command(int argc, char** argv) {
         printf("duckdb: --cli opens an interactive session; omit -c\n");
         return 1;
     }
+    cli = cli || (!compact && !sql);
     char resolved_path[512];
     const char* db_path = nullptr;
     if (file_arg && strcmp(file_arg, ":memory:") != 0) {
@@ -294,15 +298,17 @@ int command(int argc, char** argv) {
         return 1;
     }
     Request request{db_path, sql, cli, xTaskGetCurrentTaskHandle(), 1};
+    TaskHandle_t task = nullptr;
     // Keep scarce internal RAM available for DuckDB's mutexes and device drivers.
-    if (xTaskCreatePinnedToCoreWithCaps(sql_task, "duckdb", cli ? 98304 : 65536, &request, 1,
-                                        nullptr, 0,
-                                        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
+    if (xTaskCreatePinnedToCoreWithCaps(sql_task, "duckdb", cli ? 98304 : 65536, &request, 1, &task,
+                                        0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
         sql_busy.clear();
         printf("duckdb: cannot allocate SQL task stack\n");
         return 1;
     }
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    // Finish cleanup before another session starts, without an extra deletion task.
+    vTaskDeleteWithCaps(task);
     sql_busy.clear();
     return request.status;
 }
@@ -400,7 +406,7 @@ extern "C" void duckdb_console_register(void) {
     }
     esp_console_cmd_t cmd{};
     cmd.command = "duckdb";
-    cmd.help = "Open a SQL prompt or run SQL: duckdb [--cli] [FILE] [-c \"SQL\"]";
+    cmd.help = "Open a SQL prompt or run SQL: duckdb [--cli|--compact] [FILE] [-c \"SQL\"]";
     cmd.func = command;
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }

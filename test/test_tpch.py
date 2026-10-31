@@ -54,7 +54,7 @@ class TpchTests(unittest.TestCase):
                 patch("builtins.print"):
             tpch.load_fixture(Mock(), io.BytesIO(), args)
         lines = [call.args[2] for call in command.call_args_list]
-        self.assertEqual(lines, ["ls /sdcard", "duckdb /sdcard/unique.duckdb",
+        self.assertEqual(lines, ["ls /sdcard", "duckdb --compact /sdcard/unique.duckdb",
                                  "CREATE TABLE t(i INT);", "BEGIN TRANSACTION;",
                                  'INSERT INTO "t" VALUES (\'1\'),(\'2\');', "COMMIT;",
                                  'SELECT count(*) FROM "t";', "CHECKPOINT;", ".quit"])
@@ -86,7 +86,7 @@ class TpchTests(unittest.TestCase):
         lines = [call.args[2] for call in command.call_args_list]
         self.assertEqual(lines.count("COMMIT;"), 3)
         self.assertEqual(lines.count("BEGIN TRANSACTION;"), 3)
-        self.assertEqual(lines.count("duckdb /sdcard/unique.duckdb"), 3)
+        self.assertEqual(lines.count("duckdb --compact /sdcard/unique.duckdb"), 3)
         self.assertEqual(lines.count(".quit"), 3)
         streak = 0
         for line in lines:

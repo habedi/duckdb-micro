@@ -93,7 +93,7 @@ def load_fixture(port, capture, args):
     listing = send_command(port, capture, "ls /sdcard")
     if Path(args.database).name.encode() in listing:
         raise RuntimeError("Generated database path already exists; refusing to overwrite it")
-    command(f"duckdb {args.database}")
+    command(f"duckdb --compact {args.database}")
     source = args.manifest.with_name("tpch.duckdb")
     tables = host_query(args.duckdb, source,
                         "SELECT table_name, sql FROM duckdb_tables() ORDER BY table_name;")
@@ -111,7 +111,7 @@ def load_fixture(port, capture, args):
             if (index + 1) % 20 == 0:
                 command("COMMIT;")
                 send_command(port, capture, ".quit")
-                command(f"duckdb {args.database}")
+                command(f"duckdb --compact {args.database}")
                 command("BEGIN TRANSACTION;")
             if index % 100 == 0:
                 print(f"Loading {name}: {loaded}/{len(rows)} rows", flush=True)
@@ -165,7 +165,7 @@ def run_queries(port, capture, report, manifest, args):
         if query["number"] not in args.queries:
             continue
         for iteration in range(args.repeats + 1):
-            command("duckdb", b"duckdb> ")
+            command("duckdb --compact", b"duckdb> ")
             command(f"SET threads={args.threads};")
             command(f"SET memory_limit='{args.memory_limit_mb}MB';")
             command(f"ATTACH '{args.database}' AS tpch (READ_ONLY);")

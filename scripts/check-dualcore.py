@@ -18,7 +18,7 @@ def session(port, capture):
     def command(line, expected=None, prompt=b"duckdb> "):
         output.extend(stress.command(port, capture, line, prompt, expected, timeout=120))
 
-    command("duckdb")
+    command("duckdb --compact")
     command("SELECT current_setting('threads'), current_setting('async_threads');", "1\t0")
     command("SET threads=2;")
     sql = ("SELECT sum(i), sum(i*i) FROM (SELECT i FROM range(1000000) t(i) "

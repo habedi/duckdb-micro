@@ -49,7 +49,7 @@
 * **DuckDB Console (`duckdb>`)**
     * [x] Interactive `duckdb>` SQL REPL with query timing and memory statistics.
     * [x] One-shot command execution (`duckdb -c "SQL"` and `duckdb [FILE] -c "SQL"`).
-    * [x] Upstream DuckDB CLI mode with multiline SQL, output formats, and file commands (`duckdb --cli`).
+    * [x] Upstream DuckDB CLI mode with multiline SQL, output formats, and file commands (the default `duckdb` console).
     * [x] Clean prompt separation with temporary suppression of shell tab completion.
     * [x] Dot-commands in the SQL console (like `.quit`, `.exit`, `.help`,and `.tables`).
     * [x] Result pagination for large query outputs in the serial terminal (25 rows per page; Space advances, and q stops output).

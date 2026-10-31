@@ -56,7 +56,7 @@ def workload(port, capture, fixture, cycle):
     def sql(query, expected=None):
         return command(port, capture, query, b"duckdb> ", expected)
 
-    command(port, capture, "duckdb", b"duckdb> ")
+    command(port, capture, "duckdb --compact", b"duckdb> ")
     sql("CREATE TABLE samples AS SELECT i, repeat('x', 32) AS payload "
         "FROM range(1000) t(i);", "1000")
     sql("SELECT count(*), sum(i) FROM samples;", "1000\t499500")
@@ -66,13 +66,13 @@ def workload(port, capture, fixture, cycle):
     sql(f"COPY samples TO '{fixture}.parquet' (FORMAT PARQUET);", "1000")
     sql(f"SELECT count(*), sum(i) FROM read_parquet('{fixture}.parquet');", "1000\t499500")
     command(port, capture, ".quit")
-    command(port, capture, f"duckdb {fixture}.duckdb", b"duckdb> ")
+    command(port, capture, f"duckdb --compact {fixture}.duckdb", b"duckdb> ")
     sql("CREATE TABLE IF NOT EXISTS cycles (id BIGINT);")
     sql("BEGIN TRANSACTION;")
     sql(f"INSERT INTO cycles VALUES ({cycle});", "1")
     sql("COMMIT;")
     command(port, capture, ".quit")
-    command(port, capture, f"duckdb {fixture}.duckdb", b"duckdb> ")
+    command(port, capture, f"duckdb --compact {fixture}.duckdb", b"duckdb> ")
     sql("SELECT count(*), sum(id) FROM cycles;", f"{cycle}\t{cycle * (cycle + 1) // 2}")
     command(port, capture, ".quit")
 

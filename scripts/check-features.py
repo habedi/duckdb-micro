@@ -81,7 +81,7 @@ def main():
             print("   PASS: LittleFS write, read, ls, and rm verified")
 
             print("4. Testing DuckDB JSON extension...")
-            port.write(b"duckdb\r")
+            port.write(b"duckdb --compact\r")
             wait_for(port, capture, b"duckdb> ")
 
             # JSON scalar functions
@@ -94,7 +94,7 @@ def main():
             wait_for(port, capture, b"msh> ")
             exec_msh(port, capture, 'write ' + json_file + ' {"name":"p4","cores":2}', f"Wrote to {json_file}".encode())
 
-            port.write(b"duckdb\r")
+            port.write(b"duckdb --compact\r")
             wait_for(port, capture, b"duckdb> ")
             exec_duckdb(port, capture, f"SELECT name, cores FROM read_json('{json_file}');", b"\np4\t2\t")
             print("   PASS: read_json on /data")

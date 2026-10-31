@@ -56,7 +56,7 @@ try:
         port.write(b"\x0c")
         wait_for(b"\x1b[H\x1b[2J")
         wait_for(b"msh> ")
-        port.write(b"duckdb\r")
+        port.write(b"duckdb --compact\r")
         wait_for(b"duckdb> ")
         time.sleep(0.1)  # Let linenoise distinguish this key from pasted input.
         port.write(b"\x0c")
@@ -116,7 +116,7 @@ try:
 
         fixture = "/sdcard/duckdb-probe-" + uuid.uuid4().hex + ".csv"
         command('write ' + fixture + ' "2,3"', b"Wrote to ", b"msh> ")
-        port.write(b"duckdb\r")
+        port.write(b"duckdb --compact\r")
         wait_for(b"duckdb> ")
         try:
             sql = "SELECT a + b FROM read_csv('" + fixture + "', auto_detect=false, header=false, delim=',', columns={'a':'INTEGER','b':'INTEGER'}, buffer_size=65536);"
