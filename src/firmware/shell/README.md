@@ -1,7 +1,7 @@
 ## DuckDB Shell Firmware
 
 This directory contains the source code and configuration for MicroShell (`msh`).
-MicroShell combines FreeRTOS, an interactive command shell, storage drivers, Wi-Fi networking, and DuckDB 2.0 on the ESP32-P4.
+MicroShell combines FreeRTOS, an interactive command shell, storage drivers, Wi-Fi networking, and DuckDB on the ESP32-P4.
 
 ### Overview
 
@@ -76,7 +76,7 @@ Run `duckdb --compact` from `msh>` to enter the compact SQL console:
 ```text
 msh> duckdb --compact
 Opening DuckDB: internal=125432 PSRAM=31457280
-DuckDB 2.0.0, in-memory database; storage under /sdcard and /data.
+DuckDB, in-memory database; storage under /sdcard and /data.
 One SQL statement per line. .quit returns to msh; tables disappear on exit.
 duckdb>
 ```

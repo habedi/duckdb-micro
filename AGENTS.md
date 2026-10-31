@@ -4,18 +4,18 @@ This file provides guidance to coding agents collaborating on this repository.
 
 ## Mission
 
-DuckDB Micro is an experimental port of DuckDB 2.0 to the ESP32-P4 microcontroller (targeting the Waveshare ESP32-P4-WIFI6 board).
+DuckDB Micro is an experimental port of DuckDB to the ESP32-P4 microcontroller (targeting the Waveshare ESP32-P4-WIFI6 board).
 It combines embedded DuckDB with FreeRTOS and ESP-IDF, providing:
 
 1. A standalone SQL engine probe firmware that verifies query execution directly on the microcontroller.
 2. An interactive shell (MicroShell) firmware featuring filesystem navigation, an in-place text editor, serial terminal REPL, Wi-Fi networking, and an
    interactive DuckDB SQL console.
-3. Portability patches and custom shims bridging DuckDB 2.0 and the ESP32-P4 toolchain.
+3. Portability patches and custom shims bridging DuckDB and the ESP32-P4 toolchain.
 
 Priorities, in order:
 
 1. Firmware stability, memory safety, and prevention of heap exhaustion in PSRAM and internal SRAM.
-2. Portability and compatibility with pinned ESP-IDF and DuckDB 2.0 versions.
+2. Portability and compatibility with pinned ESP-IDF and DuckDB versions.
 3. Clean separation between DuckDB core patches, firmware shell features, and host test infrastructure.
 4. Small, well-tested changes verified by host unit tests and hardware serial checks.
 
@@ -50,7 +50,7 @@ Priorities, in order:
     - `path_util.c`: Path normalization and completion utilities.
     - `flash_stack_shim.c`: LittleFS SPI flash worker thread shim.
 - `src/firmware/shell/test/`: Unit tests for shell path handling, editor, autocompletion, filesystem, and Wi-Fi helpers.
-- `src/patches/duckdb-esp32p4.diff`: Portability patch applied against the upstream DuckDB 2.0 submodule.
+- `src/patches/duckdb-esp32p4.diff`: Portability patch applied against the upstream DuckDB submodule.
 - `src/cmake/`: CMake toolchain files for cross-compiling DuckDB to ESP32-P4 (`esp32p4.cmake`, `esp32p4-clang.cmake`).
 - `scripts/`: Build automation and hardware validation scripts.
     - `scripts/build-probe.sh`: Cross-compilation script for the probe firmware.
@@ -73,7 +73,7 @@ Priorities, in order:
 
 ### DuckDB Portability and Patching
 
-DuckDB 2.0 is included as a Git submodule in `external/duckdb`.
+DuckDB is included as a Git submodule in `external/duckdb`.
 Modifications to DuckDB are stored as a unified patch in `src/patches/duckdb-esp32p4.diff`.
 The patch handles:
 

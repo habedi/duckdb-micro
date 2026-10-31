@@ -8,7 +8,7 @@
       virtual MMU instruction cache limit.
     * [x] Local-exec TLS model (`-ftls-model=local-exec`) resolving microcontroller thread-local storage relocations.
     * [x] Reproducible developer environment via Nix flake.
-    * [x] Upstream DuckDB 2.0 submodule integration with patch automation (`src/patches/duckdb-esp32p4.diff`).
+    * [x] Upstream DuckDB submodule integration with patch automation (`src/patches/duckdb-esp32p4.diff`).
     * [x] Symbol conflict isolation renaming bundled mbedTLS symbols against ESP-IDF crypto libraries.
 * **Architecture and Memory Model**
     * [x] Target ESP32-P4 revision v1.3 with 32 MB PSRAM (16-line 200 MHz) and 32 MB flash.

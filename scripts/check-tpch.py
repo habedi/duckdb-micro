@@ -364,7 +364,7 @@ def generate_markdown_report(csv_path, json_path=None):
     lines = [
         "# TPC-H Benchmark Report",
         "",
-        "This report summarizes DuckDB 2.0 TPC-H subset benchmark results on the "
+        "This report summarizes DuckDB TPC-H subset benchmark results on the "
         "ESP32-P4 microcontroller.",
         "",
         "## Benchmark Environment",
@@ -372,7 +372,7 @@ def generate_markdown_report(csv_path, json_path=None):
         "| Property | Value |",
         "|---|---|",
         "| Target Hardware | Waveshare ESP32-P4-WIFI6 (32 MB PSRAM, 32 MB Flash) |",
-        "| Target Engine | DuckDB 2.0 (FreeRTOS) |",
+        "| Target Engine | DuckDB (FreeRTOS) |",
     ]
 
     scale = manifest.get("scale", meta.get("scale"))

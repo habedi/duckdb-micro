@@ -180,11 +180,10 @@ void sql_task(void* argument) {
             duckdb::DuckDB database(request.db_path, &config);
             duckdb::Connection connection(database);
             if (request.db_path) {
-                printf("DuckDB 2.0.0, database %s; storage under /sdcard and /data.\n",
-                       request.db_path);
+                printf("DuckDB, database %s; storage under /sdcard and /data.\n", request.db_path);
                 printf("One SQL statement per line. .quit returns to msh.\n");
             } else {
-                printf("DuckDB 2.0.0, in-memory database; storage under /sdcard and /data.\n");
+                printf("DuckDB, in-memory database; storage under /sdcard and /data.\n");
                 printf(
                     "One SQL statement per line. .quit returns to msh; tables disappear on "
                     "exit.\n");
