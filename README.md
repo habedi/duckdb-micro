@@ -86,12 +86,14 @@ make console TTY=/dev/ttyACM0
 ```
 
 Press Enter after opening the console to get to the MicroShell (`msh>`) prompt.
-Run `duckdb` for the upstream SQL console. End SQL with `;`, and use `.quit` to return.
-`duckdb --compact` selects the compact console, and `duckdb -c "SELECT 42;"` runs one query.
 
-<div align="center">
-  <img alt="MicroShell" src="docs/assets/images/msh-01.png" width="80%">
-</div>
+[![Simple Demo 1](https://asciinema.org/a/DHMxhBJdkCUTsZAu.svg)](https://asciinema.org/a/DHMxhBJdkCUTsZAu)
+
+[//]: # (<div align="center">)
+
+[//]: # (  <img alt="MicroShell" src="docs/assets/images/msh-01.png" width="80%">)
+
+[//]: # (</div>)
 
 > [!NOTE]
 > Serial port access needs membership in the `dialout` group (which can be set up with something like `sudo usermod -aG dialout $USER`).
