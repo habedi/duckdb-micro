@@ -5,13 +5,13 @@ All queries run against a persistent database stored on the microSD card (`/sdca
 
 ### Hardware Execution Times
 
-| Query | Name                              | Operations                              | Scale 0.001 (~6,000 Rows) | Scale 0.01 (~60,000 Rows) |
-|-------|-----------------------------------|-----------------------------------------|---------------------------|---------------------------|
-| Q01   | Pricing Summary Report            | Scan, filter, aggregation, and grouping | 459 ms                    | 927 ms                    |
-| Q03*  | Shipping Priority                 | Join, filter, aggregation, and sorting  | 655 ms                    | 930 ms                    |
-| Q06   | Forecasting Revenue Change        | Scan, range filtering, and aggregation  | 274 ms                    | 450 ms                    |
-| Q12   | Shipping Modes and Order Priority | Join, filtering, and aggregation        | 563 ms                    | 860 ms                    |
-| Q14*  | Promotion Effect                  | Join and conditional aggregation        | 458 ms                    | 645 ms                    |
+| Query | Name                              | Scale 0.001 (~6,000 Rows) | Scale 0.01 (~60,000 Rows) |
+|-------|-----------------------------------|---------------------------|---------------------------|
+| Q01   | Pricing Summary Report            | 459 ms                    | 927 ms                    |
+| Q03*  | Shipping Priority                 | 655 ms                    | 930 ms                    |
+| Q06   | Forecasting Revenue Change        | 274 ms                    | 450 ms                    |
+| Q12   | Shipping Modes and Order Priority | 563 ms                    | 860 ms                    |
+| Q14*  | Promotion Effect                  | 458 ms                    | 645 ms                    |
 
 \* Evaluated with a session buffer limit of 12 MB (`--memory-limit-mb 12`).
 Queries Q01, Q06, and Q12 run within the default 8 MB budget.
