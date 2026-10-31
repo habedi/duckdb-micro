@@ -87,15 +87,15 @@ make console TTY=/dev/ttyACM0
 
 Press Enter after opening the console to get to the MicroShell (`msh>`) prompt.
 
-[![Simple Demo 1](https://asciinema.org/a/DHMxhBJdkCUTsZAu.svg)](https://asciinema.org/a/DHMxhBJdkCUTsZAu)
+<div align="center">
+
+  <img alt="MicroShell" src="docs/assets/images/msh-02.png" width="100%">
+
+</div>
 
 <br>
 
-<div align="center">
-
-  <img alt="MicroShell" src="docs/assets/images/msh-02.png" width="80%">
-
-</div>
+[![Simple Demo 1](https://asciinema.org/a/DHMxhBJdkCUTsZAu.svg)](https://asciinema.org/a/DHMxhBJdkCUTsZAu)
 
 > [!NOTE]
 > Serial port access needs membership in the `dialout` group (which can be set up with something like `sudo usermod -aG dialout $USER`).
