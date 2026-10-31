@@ -11,13 +11,16 @@ CLI_ARGS ?=
 STRESS_ARGS ?=
 TPCH_ARGS ?=
 TPCH_MANIFEST ?= build/tpch/manifest.json
+TPCH_REPORT ?=
+TPCH_REPORT_ARGS ?=
+CLANG_FORMAT ?= $(firstword $(wildcard /usr/bin/clang-format) clang-format)
 
 export CFLAGS CXXFLAGS SANFLAGS LDFLAGS TEST_RUNNER
 
 FORMAT_FILES := $(wildcard src/firmware/main/*.cpp src/firmware/shell/main/*.cpp src/firmware/shell/cli/*.cpp src/firmware/shell/main/duckdb_console.h test/*.cpp)
 
 .PHONY: help clean clean-all submodules probe-build shell-build firmware-package shell-flash flash probe-flash console \
- check-shell check-cli check-probe check-stress check-network check-dualcore prepare-tpch check-tpch espidf-install test probe-test shell-test \
+ check-shell check-cli check-probe check-stress check-network check-dualcore prepare-tpch check-tpch report-tpch espidf-install test probe-test shell-test \
   asan ubsan memcheck format lint setup-hooks test-hooks
 
 help: ## Show available commands
@@ -85,6 +88,9 @@ prepare-tpch: ## Generate a small TPC-H database and host reference results (req
 check-tpch: ## Prepare, load over serial, and benchmark a small TPC-H database on the SD card
 	$(PYTHON) scripts/check-tpch.py run $(TTY) "$(TPCH_MANIFEST)" $(TPCH_ARGS)
 
+report-tpch: ## Generate a Markdown report from TPC-H benchmark results
+	$(PYTHON) scripts/check-tpch.py report $(if $(TPCH_REPORT),--input "$(TPCH_REPORT)",) $(TPCH_REPORT_ARGS)
+
 check-probe: ## Run hardware serial check for standalone probe (e.g. make check-probe [TTY=/dev/ttyACM0])
 	@export IDF_PATH="$${IDF_PATH:-$(CURDIR)/external/esp-idf}"; \
 	export IDF_TOOLS_PATH="$${IDF_TOOLS_PATH:-$(CURDIR)/build/espressif}"; \
@@ -112,7 +118,7 @@ memcheck: ## Run native host test binaries under Valgrind (without sanitizers)
 		TEST_RUNNER='valgrind --quiet --leak-check=full --show-leak-kinds=all --errors-for-leak-kinds=definite,indirect,possible --error-exitcode=99'
 
 format: ## Format the project's firmware and host-test C++ code
-	clang-format -i $(FORMAT_FILES)
+	$(CLANG_FORMAT) -i $(FORMAT_FILES)
 
 lint: ## Check host-test and math-shim code with cppcheck
 	cppcheck --enable=warning,performance,portability --error-exitcode=1 --std=c++17 \

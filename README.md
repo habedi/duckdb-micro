@@ -9,7 +9,7 @@
 > [!WARNING]
 > **This project is very experimental.**
 
-DuckDB Micro is an experimental (and partial) port of DuckDB 2.0 to ESP32-P4 (more specifically,
+DuckDB Micro is an experimental (and partial) port of DuckDB to ESP32-P4 (more specifically,
 the [Waveshare ESP32-P4-WIFI6](https://www.waveshare.com/wiki/ESP32-P4-WIFI6) board; see image below).
 
 <div align="center">
@@ -87,17 +87,25 @@ make console TTY=/dev/ttyACM0
 
 Press Enter after opening the console to get to the MicroShell (`msh>`) prompt.
 
+<div align="center">
+
+  <img alt="MicroShell" src="docs/assets/images/msh-02.png" width="100%">
+
+</div>
+
+<br>
+
 [![Simple Demo 1](https://asciinema.org/a/DHMxhBJdkCUTsZAu.svg)](https://asciinema.org/a/DHMxhBJdkCUTsZAu)
-
-[//]: # (<div align="center">)
-
-[//]: # (  <img alt="MicroShell" src="docs/assets/images/msh-01.png" width="80%">)
-
-[//]: # (</div>)
 
 > [!NOTE]
 > Serial port access needs membership in the `dialout` group (which can be set up with something like `sudo usermod -aG dialout $USER`).
 > Also, change `/dev/ttyACM0` to the appropriate serial port for your system, if needed.
+
+---
+
+### Performance
+
+See [docs/benchmarks.md](docs/benchmarks.md) for benchmark results and performance comparisons.
 
 ---
 

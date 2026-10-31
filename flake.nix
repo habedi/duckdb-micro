@@ -1,5 +1,5 @@
 {
-  description = "An experimental, partial port of DuckDB 2.0 to ESP32-P4";
+  description = "An experimental, partial port of DuckDB to ESP32-P4";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 

@@ -143,3 +143,5 @@ src/firmware/sdkconfig
 src/firmware/sdkconfig.old
 src/firmware/shell/sdkconfig
 src/firmware/shell/sdkconfig.old
+tpch-summary.md
+REPORT.md

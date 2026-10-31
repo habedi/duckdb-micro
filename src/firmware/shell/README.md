@@ -1,7 +1,7 @@
 ## DuckDB Shell Firmware
 
 This directory contains the source code and configuration for MicroShell (`msh`).
-MicroShell combines FreeRTOS, an interactive command shell, storage drivers, Wi-Fi networking, and DuckDB 2.0 on the ESP32-P4.
+MicroShell combines FreeRTOS, an interactive command shell, storage drivers, Wi-Fi networking, and DuckDB on the ESP32-P4.
 
 ### Overview
 
@@ -76,7 +76,7 @@ Run `duckdb --compact` from `msh>` to enter the compact SQL console:
 ```text
 msh> duckdb --compact
 Opening DuckDB: internal=125432 PSRAM=31457280
-DuckDB 2.0.0, in-memory database; storage under /sdcard and /data.
+DuckDB, in-memory database; storage under /sdcard and /data.
 One SQL statement per line. .quit returns to msh; tables disappear on exit.
 duckdb>
 ```
@@ -330,6 +330,21 @@ Imports retain the firmware limit. The CSV also records minimum free bytes since
 this low-water mark includes loading and earlier queries, rather than measuring each query alone.
 Use `--threads 2` in `TPCH_ARGS` to benchmark the CPU 1 worker. Thread count is saved
 with the run settings. Parallel execution can increase memory use and does not guarantee a speedup.
+
+To generate or view a Markdown report from benchmark results:
+
+```shell
+make report-tpch
+```
+
+This command parses the latest benchmark run in `build/hardware/`, saves a companion
+Markdown report (`tpch-*.md`), and prints the report to standard output. Use `TPCH_REPORT`
+to target a specific benchmark run, or `TPCH_REPORT_ARGS` to set output options:
+
+```shell
+make report-tpch TPCH_REPORT=build/hardware/tpch-25e2cad863d847749a8e0e23832e52e0.csv
+make report-tpch TPCH_REPORT_ARGS='--output tpch-summary.md'
+```
 
 ### Dual-Core Verification
 
