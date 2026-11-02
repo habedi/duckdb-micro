@@ -13,6 +13,3 @@ src/patches/*.diff -whitespace
 *.tar filter=lfs diff=lfs merge=lfs -text
 *.gz filter=lfs diff=lfs merge=lfs -text
 *.tgz filter=lfs diff=lfs merge=lfs -text
-
-*.ipynb linguist-vendored
-Makefile linguist-vendored

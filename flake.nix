@@ -40,6 +40,7 @@
               valgrind
               pre-commit
               nixfmt
+              duckdb
             ];
             shellHook = ''
               unset PYTHONPATH

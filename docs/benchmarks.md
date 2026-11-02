@@ -2,6 +2,8 @@
 
 The tables below show execution times for a subset of TPC-H queries running directly on the ESP32-P4 board.
 All queries run against a persistent database stored on the microSD card (`/sdcard`).
+Each query is run four times.
+The first run is for warmup, and the median of three remaining runs is used for the execution time.
 
 ### Hardware Execution Times
 
