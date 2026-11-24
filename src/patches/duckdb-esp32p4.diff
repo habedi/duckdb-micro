@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 3e69d9b32e4..1d0384ecd94 100644
+index 97d5f31caf7..d808b65ee32 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -75,7 +75,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -375,7 +375,7 @@ index 06bf269b49a..9cf71386700 100644
  	DUCKDB_SCALAR_FUNCTION(VersionFun),
  	DUCKDB_SCALAR_FUNCTION_SET(WeekFun),
 diff --git a/extension/json/include/json_reader_options.hpp b/extension/json/include/json_reader_options.hpp
-index 25563ac9858..0973b121a44 100644
+index 3a02f402589..454f223d45a 100644
 --- a/extension/json/include/json_reader_options.hpp
 +++ b/extension/json/include/json_reader_options.hpp
 @@ -101,8 +101,12 @@ struct JSONReaderOptions {
@@ -393,10 +393,10 @@ index 25563ac9858..0973b121a44 100644
  	bool auto_detect = false;
  	//! Whether "format" was explicitly specified
 diff --git a/extension/json/json_scan.cpp b/extension/json/json_scan.cpp
-index b34970e7718..9623d10897b 100644
+index 9514a587d3b..2bcc9b8686a 100644
 --- a/extension/json/json_scan.cpp
 +++ b/extension/json/json_scan.cpp
-@@ -172,7 +172,7 @@ bool JSONScan::ParseOption(ClientContext &context, const Identifier &key, const
+@@ -173,7 +173,7 @@ bool JSONScan::ParseOption(ClientContext &context, const Identifier &key, const
  		return true;
  	}
  	if (key == "maximum_object_size") {
@@ -491,10 +491,10 @@ index 32886430cf0..639c7864290 100644
  	munlock(key, key_len);
  #endif
 diff --git a/src/common/file_system.cpp b/src/common/file_system.cpp
-index 62a7b2b8f5d..fdfb0bcab6b 100644
+index 04a78aaa008..ca68f35191a 100644
 --- a/src/common/file_system.cpp
 +++ b/src/common/file_system.cpp
-@@ -20,6 +20,9 @@
+@@ -21,6 +21,9 @@
 
  #include <cstdint>
  #include <cstdio>
@@ -504,7 +504,16 @@ index 62a7b2b8f5d..fdfb0bcab6b 100644
 
  #ifndef _WIN32
  #include <dirent.h>
-@@ -136,6 +139,9 @@ void FileSystem::SetWorkingDirectory(const string &path) {
+@@ -32,7 +35,7 @@
+ #include <sys/types.h>
+ #include <unistd.h>
+
+-#ifndef __EMSCRIPTEN__
++#if !defined(__EMSCRIPTEN__) && !defined(ESP_PLATFORM)
+ #include <sys/resource.h>
+ #endif
+
+@@ -137,6 +140,9 @@ void FileSystem::SetWorkingDirectory(const string &path) {
  }
 
  optional_idx FileSystem::GetAvailableMemory() {
@@ -514,7 +523,7 @@ index 62a7b2b8f5d..fdfb0bcab6b 100644
  	errno = 0;
 
  #ifdef __MVS__
-@@ -149,6 +155,7 @@ optional_idx FileSystem::GetAvailableMemory() {
+@@ -150,6 +156,7 @@ optional_idx FileSystem::GetAvailableMemory() {
  		return optional_idx();
  	}
  	return max_memory;
@@ -522,11 +531,20 @@ index 62a7b2b8f5d..fdfb0bcab6b 100644
  }
 
  optional_idx FileSystem::GetAvailableDiskSpace(const string &path) {
+@@ -289,7 +296,7 @@ string FileSystem::GetWorkingDirectory() {
+ #endif
+
+ optional_idx FileSystem::GetFileDescriptorLimit() {
+-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
++#if !defined(_WIN32) && !defined(__EMSCRIPTEN__) && !defined(ESP_PLATFORM)
+ 	struct rlimit limit;
+ 	if (getrlimit(RLIMIT_NOFILE, &limit) != 0 || limit.rlim_cur == RLIM_INFINITY) {
+ 		return optional_idx();
 diff --git a/src/common/local_file_system.cpp b/src/common/local_file_system.cpp
-index 664659e76aa..8bfeef03476 100644
+index ac8d0fca14c..ec2a94a5644 100644
 --- a/src/common/local_file_system.cpp
 +++ b/src/common/local_file_system.cpp
-@@ -30,7 +30,9 @@
+@@ -31,7 +31,9 @@
  #include <dirent.h>
  #include <fcntl.h>
  #include <string.h>
@@ -536,7 +554,7 @@ index 664659e76aa..8bfeef03476 100644
  #include <sys/types.h>
  #include <unistd.h>
  #else
-@@ -287,6 +289,9 @@ static FileMetadata StatsInternal(int fd, const string &path) {
+@@ -297,6 +299,9 @@ static FileMetadata StatsInternal(int fd, const string &path) {
  // Apply a fcntl advisory lock per flags.Lock(); throws (and closes fd) on failure. Shared
  // by OpenFile and MemoryMapFile.
  static void TryAcquireFileLock(FileSystem &fs, int fd, const string &path, FileOpenFlags flags) {
@@ -546,7 +564,7 @@ index 664659e76aa..8bfeef03476 100644
  	if (flags.Lock() == FileLockType::NO_LOCK) {
  		return;
  	}
-@@ -345,9 +350,13 @@ static void TryAcquireFileLock(FileSystem &fs, int fd, const string &path, FileO
+@@ -355,9 +360,13 @@ static void TryAcquireFileLock(FileSystem &fs, int fd, const string &path, FileO
  	extended_error += ". See also https://duckdb.org/docs/current/connect/concurrency";
  	throw IOException({{"errno", std::to_string(retained_errno)}}, "Could not set lock on file \"%s\": %s", path,
  	                  extended_error);
@@ -560,7 +578,7 @@ index 664659e76aa..8bfeef03476 100644
  	auto path = FileSystem::ExpandPath(path_p, opener);
 
  	struct stat st;
-@@ -364,6 +373,7 @@ bool LocalFileSystem::IsPrivateFile(const string &path_p, FileOpener *opener) {
+@@ -374,6 +383,7 @@ bool LocalFileSystem::IsPrivateFile(const string &path_p, FileOpener *opener) {
  	}
 
  	return true;
@@ -568,7 +586,7 @@ index 664659e76aa..8bfeef03476 100644
  }
 
  unique_ptr<FileHandle> LocalFileSystem::OpenFile(const string &path_p, FileOpenFlags flags,
-@@ -422,6 +432,7 @@ unique_ptr<FileHandle> LocalFileSystem::OpenFile(const string &path_p, FileOpenF
+@@ -432,6 +442,7 @@ unique_ptr<FileHandle> LocalFileSystem::OpenFile(const string &path_p, FileOpenF
  		open_flags |= O_EXCL;
  	}
 
@@ -576,7 +594,7 @@ index 664659e76aa..8bfeef03476 100644
  	// Open the file
  	ApplyLocalFileSystemDelay(opener);
  	int fd = open(path.c_str(), open_flags, filesec);
-@@ -830,7 +841,8 @@ void LocalFileSystem::FileSync(FileHandle &handle) {
+@@ -842,7 +853,8 @@ void LocalFileSystem::FileSync(FileHandle &handle) {
  	}
  #endif // F_FULLFSYNC
 
@@ -586,7 +604,7 @@ index 664659e76aa..8bfeef03476 100644
  	bool sync_success = ::fdatasync(fd) == 0;
  #else
  	bool sync_success = ::fsync(fd) == 0;
-@@ -854,10 +866,21 @@ void LocalFileSystem::MoveFile(const string &source, const string &target, optio
+@@ -866,10 +878,21 @@ void LocalFileSystem::MoveFile(const string &source, const string &target, optio
  	auto normalized_source = ExpandPath(source, opener);
  	auto normalized_target = ExpandPath(target, opener);
  	//! FIXME: rename does not guarantee atomicity or overwriting target file if it exists
@@ -608,7 +626,23 @@ index 664659e76aa..8bfeef03476 100644
  }
 
  std::string LocalFileSystem::GetLastErrorAsString() {
-@@ -889,6 +912,12 @@ string LocalFileSystem::MakePathAbsolute(const string &path_p, optional_ptr<File
+@@ -882,6 +905,7 @@ bool LocalFileSystem::TryCanonicalizeExistingPath(string &input) {
+ 		input = resolved;
+ 		return true;
+ 	}
++#ifndef ESP_PLATFORM
+ 	// the path might be a dangling symlink - follow the chain and canonicalize the parent of the final target
+ 	static constexpr idx_t MAX_SYMLINK_DEPTH = 40;
+ 	string current = input;
+@@ -924,6 +948,7 @@ bool LocalFileSystem::TryCanonicalizeExistingPath(string &input) {
+ 		input = result + target.substr(target_sep + 1);
+ 		return true;
+ 	}
++#endif
+ 	return false;
+ }
+
+@@ -943,6 +968,12 @@ string LocalFileSystem::MakePathAbsolute(const string &path_p, optional_ptr<File
  //===----------------------------------------------------------------------===//
  // Memory-mapped files (Unix)
  //===----------------------------------------------------------------------===//
@@ -621,7 +655,7 @@ index 664659e76aa..8bfeef03476 100644
  class UnixMemoryMappedFile : public MemoryMappedFile {
  public:
  	UnixMemoryMappedFile(string path_p, FileOpenFlags flags_p, int fd_p, data_ptr_t data_p, idx_t size_p);
-@@ -1021,6 +1050,7 @@ unique_ptr<MemoryMappedFile> LocalFileSystem::MemoryMapFile(const OpenFileInfo &
+@@ -1075,6 +1106,7 @@ unique_ptr<MemoryMappedFile> LocalFileSystem::MemoryMapFile(const OpenFileInfo &
 
  	return make_uniq<UnixMemoryMappedFile>(path, flags, fd, data, mapping_size);
  }
@@ -629,7 +663,7 @@ index 664659e76aa..8bfeef03476 100644
 
  #else
 
-@@ -2101,7 +2131,10 @@ static bool IsCrawl(const string &glob) {
+@@ -2157,7 +2189,10 @@ static bool IsCrawl(const string &glob) {
  }
 
  static bool IsSymbolicLink(const string &path) {
@@ -674,25 +708,55 @@ index a56bbb20fc9..099947e5007 100644
  	} catch (...) {
  		auto error = std::current_exception();
  		if (!first_error) {
-diff --git a/src/common/types/date.cpp b/src/common/types/date.cpp
-index 61e3965e4fc..4cc6292e5d4 100644
---- a/src/common/types/date.cpp
-+++ b/src/common/types/date.cpp
-@@ -552,10 +552,10 @@ static int32_t GetISOYearWeek(const date_t date, int32_t &year) {
- 	int32_t month, day;
- 	Date::Convert(date, year, month, day);
- 	auto week1_monday = GetISOWeekOne(year);
--	auto week = PythonDivMod((date.days - week1_monday.days), 7, day);
-+	auto week = PythonDivMod<int32_t>((date.days - week1_monday.days), 7, day);
- 	if (week < 0) {
- 		week1_monday = GetISOWeekOne(--year);
--		week = PythonDivMod((date.days - week1_monday.days), 7, day);
-+		week = PythonDivMod<int32_t>((date.days - week1_monday.days), 7, day);
- 	} else if (week >= 52 && date >= GetISOWeekOne(year + 1)) {
- 		++year;
- 		week = 0;
+diff --git a/src/common/sort/sort_strategy.cpp b/src/common/sort/sort_strategy.cpp
+index 8fac14e3363..1a0c4c5d402 100644
+--- a/src/common/sort/sort_strategy.cpp
++++ b/src/common/sort/sort_strategy.cpp
+@@ -2,6 +2,7 @@
+ #include "duckdb/common/sorting/full_sort.hpp"
+ #include "duckdb/common/sorting/hashed_sort.hpp"
+ #include "duckdb/common/sorting/natural_sort.hpp"
++#include "duckdb/common/types/row/tuple_data_collection.hpp"
+
+ namespace duckdb {
+
+diff --git a/src/common/thread_util.cpp b/src/common/thread_util.cpp
+index 37afc0f24b8..a4ee33d5c71 100644
+--- a/src/common/thread_util.cpp
++++ b/src/common/thread_util.cpp
+@@ -6,6 +6,11 @@
+ #include "duckdb/common/time_point.hpp"
+ #include "duckdb/main/client_context.hpp"
+
++#ifdef ESP_PLATFORM
++#include "freertos/FreeRTOS.h"
++#include "freertos/task.h"
++#endif
++
+ namespace duckdb {
+
+ #ifndef DUCKDB_NO_THREADS
+@@ -31,12 +36,17 @@ void ThreadUtil::SleepMicroSeconds(idx_t micros) {
+ }
+
+ thread_id ThreadUtil::GetThreadId() {
++#ifdef ESP_PLATFORM
++	// DuckDB also runs in SDK tasks that are not registered as pthreads.
++	return thread_id(reinterpret_cast<std::thread::native_handle_type>(xTaskGetCurrentTaskHandle()));
++#else
+ 	return std::this_thread::get_id();
++#endif
+ }
+
+ string ThreadUtil::GetThreadIdString() {
+ 	std::ostringstream ss;
+-	ss << std::this_thread::get_id();
++	ss << GetThreadId();
+ 	return ss.str();
+ }
+
 diff --git a/src/common/types/row/tuple_data_allocator.cpp b/src/common/types/row/tuple_data_allocator.cpp
-index fb1ead6960c..78a32b4e79f 100644
+index 45bd4791692..26b7c353f55 100644
 --- a/src/common/types/row/tuple_data_allocator.cpp
 +++ b/src/common/types/row/tuple_data_allocator.cpp
 @@ -191,7 +191,8 @@ void TupleDataAllocator::Build(TupleDataSegment &segment, TupleDataPinState &pin
@@ -706,7 +770,7 @@ index fb1ead6960c..78a32b4e79f 100644
  			auto &chunk = *chunks.back();
 
 diff --git a/src/common/types/row/tuple_data_segment.cpp b/src/common/types/row/tuple_data_segment.cpp
-index f1d77a6b1b1..e047d3a5847 100644
+index ff69b1a1b85..cc2bd17b19c 100644
 --- a/src/common/types/row/tuple_data_segment.cpp
 +++ b/src/common/types/row/tuple_data_segment.cpp
 @@ -18,12 +18,17 @@ void TupleDataChunkPart::SetHeapEmpty() {
@@ -743,7 +807,7 @@ index 8441065069b..a24e585f408 100644
  	DUCKDB_API explicit operator uhugeint_t() const;
  };
 diff --git a/src/include/duckdb/common/platform.hpp b/src/include/duckdb/common/platform.hpp
-index ac4974d7f5a..90be6b61db6 100644
+index c25673ab530..bd7e2f13888 100644
 --- a/src/include/duckdb/common/platform.hpp
 +++ b/src/include/duckdb/common/platform.hpp
 @@ -15,7 +15,7 @@
@@ -787,10 +851,10 @@ index bdf8b8f62b6..1b3fe58cc6d 100644
  		}
  		if (input == 0) {
 diff --git a/src/include/duckdb/common/serializer/deserializer.hpp b/src/include/duckdb/common/serializer/deserializer.hpp
-index 47d39ca5f4c..c819c56ddb2 100644
+index c514d64a402..8c32643eb09 100644
 --- a/src/include/duckdb/common/serializer/deserializer.hpp
 +++ b/src/include/duckdb/common/serializer/deserializer.hpp
-@@ -482,6 +482,18 @@ private:
+@@ -500,6 +500,18 @@ private:
  		return ReadUnsignedInt32();
  	}
 
@@ -848,7 +912,7 @@ index ccf773c5c73..b02811fe8d3 100644
  using std::thread;
  using thread_id = std::thread::id;
 diff --git a/src/include/duckdb/common/types/row/tuple_data_segment.hpp b/src/include/duckdb/common/types/row/tuple_data_segment.hpp
-index 199bafea38c..640c47e7bcb 100644
+index 5dc82b1bc78..7f05641b60e 100644
 --- a/src/include/duckdb/common/types/row/tuple_data_segment.hpp
 +++ b/src/include/duckdb/common/types/row/tuple_data_segment.hpp
 @@ -115,6 +115,7 @@ private:
@@ -899,29 +963,72 @@ index a579e37e4b2..db92f935a90 100644
  	DUCKDB_API explicit operator int64_t() const;
  	DUCKDB_API operator hugeint_t() const; // NOLINT: Allow implicit conversion from `uhugeint_t`
  };
-diff --git a/src/main/http/http_transport_manager.cpp b/src/main/http/http_transport_manager.cpp
-index ac7658fc50a..4d0455d4bc4 100644
---- a/src/main/http/http_transport_manager.cpp
-+++ b/src/main/http/http_transport_manager.cpp
-@@ -6,7 +6,7 @@
- #include "duckdb/main/config.hpp"
- #include "duckdb/main/database.hpp"
-
--#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
-+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__) && !defined(ESP_PLATFORM)
- #include <sys/resource.h>
- #endif
-
-@@ -232,7 +232,7 @@ idx_t HTTPTransportManager::CalculateCapacity(idx_t system_concurrency, optional
+diff --git a/src/main/config.cpp b/src/main/config.cpp
+index ab302f786a9..2aef30b0dc6 100644
+--- a/src/main/config.cpp
++++ b/src/main/config.cpp
+@@ -705,7 +705,9 @@ void DBConfig::CheckLock(const Identifier &name) {
  }
 
- optional_idx HTTPTransportManager::GetFileDescriptorLimit() {
--#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
-+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__) && !defined(ESP_PLATFORM)
- 	struct rlimit limit;
- 	if (getrlimit(RLIMIT_NOFILE, &limit) != 0 || limit.rlim_cur == RLIM_INFINITY) {
- 		return optional_idx();
+ idx_t DBConfig::GetSystemMaxThreads(FileSystem &fs) {
+-#ifdef DUCKDB_NO_THREADS
++#if defined(ESP_PLATFORM)
++	return 2;
++#elif defined(DUCKDB_NO_THREADS)
+ 	return 1;
+ #else
+ 	idx_t physical_cores = std::thread::hardware_concurrency();
+@@ -724,7 +726,7 @@ idx_t DBConfig::GetSystemMaxThreads(FileSystem &fs) {
+ }
+
+ idx_t DBConfig::GetSystemMaxAsyncThreads(FileSystem &fs) {
+-#ifdef DUCKDB_NO_THREADS
++#if defined(DUCKDB_NO_THREADS) || defined(ESP_PLATFORM)
+ 	return 0;
+ #else
+ 	return MinValue<idx_t>(4 * GetSystemMaxThreads(fs), 256);
+diff --git a/src/main/settings/custom_settings.cpp b/src/main/settings/custom_settings.cpp
+index b60e861eabe..8dafd8cae82 100644
+--- a/src/main/settings/custom_settings.cpp
++++ b/src/main/settings/custom_settings.cpp
+@@ -1080,6 +1080,11 @@ void ExternalThreadsSetting::OnSet(SettingCallbackInfo &info, Value &input) {
+ 		throw InvalidInputException("external_threads must be a positive integer");
+ 	}
+ 	auto new_external_threads = input.GetValue<uint64_t>();
++#ifdef ESP_PLATFORM
++	if (new_external_threads != 1) {
++		throw InvalidInputException("ESP32-P4 requires one external query thread");
++	}
++#endif
+ 	if (info.db) {
+ 		TaskScheduler::GetScheduler(*info.db).SetThreads(info.config.options.maximum_threads, new_external_threads);
+ 	}
+@@ -1764,6 +1769,11 @@ void ThreadsSetting::SetGlobal(DatabaseInstance *db, DBConfig &config, const Val
+ 	if (new_val < 1) {
+ 		throw SyntaxException("Must have at least 1 thread!");
+ 	}
++#ifdef ESP_PLATFORM
++	if (new_val > 2) {
++		throw InvalidInputException("ESP32-P4 supports at most two query threads");
++	}
++#endif
+ 	auto new_maximum_threads = NumericCast<idx_t>(new_val);
+ 	if (db) {
+ 		TaskScheduler::GetScheduler(*db).SetThreads(new_maximum_threads, Settings::Get<ExternalThreadsSetting>(config));
+@@ -1802,6 +1812,11 @@ void AsyncThreadsSetting::SetGlobal(DatabaseInstance *db, DBConfig &config, cons
+ 	if (new_val < 0) {
+ 		throw SyntaxException("Cannot have negative async_threads!");
+ 	}
++#ifdef ESP_PLATFORM
++	if (new_val != 0) {
++		throw InvalidInputException("ESP32-P4 does not support async query workers");
++	}
++#endif
+ 	auto new_async_threads = NumericCast<idx_t>(new_val);
+ 	if (db) {
+ 		TaskScheduler::GetScheduler(*db).SetAsyncThreads(new_async_threads);
 diff --git a/src/parallel/task_scheduler.cpp b/src/parallel/task_scheduler.cpp
+index 64b82de03f0..0820897a9cc 100644
 --- a/src/parallel/task_scheduler.cpp
 +++ b/src/parallel/task_scheduler.cpp
 @@ -8,6 +8,12 @@
@@ -937,10 +1044,10 @@ diff --git a/src/parallel/task_scheduler.cpp b/src/parallel/task_scheduler.cpp
  #ifndef DUCKDB_NO_THREADS
  #include "concurrentqueue.h"
  #include "duckdb/common/thread.hpp"
-@@ -120,6 +126,15 @@
- bool TaskScheduler::TryDequeueAndProcessTask(const DBConfig &config, TaskSchedulerQueue &queue, ConsumerToken &consumer,
-                                              shared_ptr<Task> &task) {
- 	if (queue.Dequeue(consumer, task)) {
+@@ -136,6 +142,15 @@ struct TaskScheduler::WorkerTask {
+ bool TaskScheduler::TryDequeueTask(TaskSchedulerQueue &queue, ConsumerToken &consumer, WorkerTask &worker_task) {
+ 	if (queue.Dequeue(consumer, worker_task.task)) {
+ 		worker_task.queue = queue;
 +#ifdef ESP_PLATFORM
 +		static thread_local bool reported = false;
 +		if (!reported) {
@@ -950,10 +1057,10 @@ diff --git a/src/parallel/task_scheduler.cpp b/src/parallel/task_scheduler.cpp
 +			reported = true;
 +		}
 +#endif
- 		auto process_mode = TaskExecutionMode::PROCESS_ALL;
- 		if (Settings::Get<SchedulerProcessPartialSetting>(config)) {
- 			process_mode = TaskExecutionMode::PROCESS_PARTIAL;
-@@ -359,7 +374,9 @@
+ 		return true;
+ 	}
+
+@@ -440,7 +455,9 @@ void TaskScheduler::YieldThread() {
  }
 
  idx_t TaskScheduler::GetEstimatedCPUId() {
@@ -964,8 +1071,52 @@ diff --git a/src/parallel/task_scheduler.cpp b/src/parallel/task_scheduler.cpp
  	// FIXME: Wasm + multithreads can likely be implemented as
  	//   return return (idx_t)std::hash<std::thread::id>()(std::this_thread::get_id());
  	return 0;
+diff --git a/src/parallel/task_scheduler_pool.cpp b/src/parallel/task_scheduler_pool.cpp
+index 303bfd64184..8062012f77f 100644
+--- a/src/parallel/task_scheduler_pool.cpp
++++ b/src/parallel/task_scheduler_pool.cpp
+@@ -208,6 +208,10 @@ void TaskSchedulerPool::RelaunchThreads(TaskScheduler &scheduler, bool destroy)
+ 			threads.push_back(std::move(thread_wrapper));
+ 			markers.push_back(std::move(marker));
+ 		} catch (std::exception &ex) {
++#ifdef ESP_PLATFORM
++			current_thread_count = threads.size() + (pool_type == TaskSchedulerType::REGULAR ? external_threads : 0);
++			throw;
++#endif
+ 			// thread constructor failed - this can happen when the system has too many threads allocated, or when
+ 			// the marker cannot be allocated - in this case we cannot launch more threads - stop launching them
+ 			break;
+diff --git a/src/parallel/task_scheduler_queue.cpp b/src/parallel/task_scheduler_queue.cpp
+index ef1d15112a5..a1c499e0ac3 100644
+--- a/src/parallel/task_scheduler_queue.cpp
++++ b/src/parallel/task_scheduler_queue.cpp
+@@ -5,6 +5,9 @@
+ #ifndef DUCKDB_NO_THREADS
+ #include "concurrentqueue.h"
+ #endif
++#ifdef ESP_PLATFORM
++#include "esp_heap_caps.h"
++#endif
+
+ namespace duckdb {
+
+@@ -14,6 +17,14 @@ TaskSchedulerType TaskSchedulerQueue::GetPoolType() {
+
+ #ifndef DUCKDB_NO_THREADS
+ struct TaskQueueTraits : public duckdb_moodycamel::ConcurrentQueueDefaultTraits {
++#ifdef ESP_PLATFORM
++	static void *malloc(size_t size) {
++		return heap_caps_aligned_alloc(alignof(std::max_align_t), size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
++	}
++	static void free(void *ptr) {
++		heap_caps_free(ptr);
++	}
++#endif
+ 	//! Consumers move on to the next producer after this many tasks (default: 256)
+ 	static constexpr uint32_t EXPLICIT_CONSUMER_CONSUMPTION_QUOTA_BEFORE_ROTATE = 16;
+ };
 diff --git a/src/storage/block_allocator.cpp b/src/storage/block_allocator.cpp
-index 60b19d2d77d..c4787ac5abf 100644
+index 04b817d0967..2fe4816da29 100644
 --- a/src/storage/block_allocator.cpp
 +++ b/src/storage/block_allocator.cpp
 @@ -9,7 +9,7 @@
@@ -1019,6 +1170,48 @@ index 60b19d2d77d..c4787ac5abf 100644
  	success = madvise(pointer, size, MADV_DONTNEED) == 0;
  #endif
  	if (!success) {
+diff --git a/third_party/concurrentqueue/lightweightsemaphore.h b/third_party/concurrentqueue/lightweightsemaphore.h
+index a0875a398a8..10b68c202e7 100644
+--- a/third_party/concurrentqueue/lightweightsemaphore.h
++++ b/third_party/concurrentqueue/lightweightsemaphore.h
+@@ -9,6 +9,7 @@
+ #include <atomic>
+ #include <cassert>
+ #include <type_traits> // For std::make_signed<T>
++#include <new>
+
+ // VS2012 doesn't support deleted functions.
+ // In this case, we declare the function normally but don't define it.
+@@ -35,7 +36,7 @@ extern "C" {
+ }
+ #elif defined(__MACH__)
+ #include <mach/mach.h>
+-#elif defined(__unix__)
++#elif defined(__unix__) || defined(ESP_PLATFORM)
+ #include <semaphore.h>
+ #include <chrono>
+ #elif defined(__MVS__)
+@@ -174,7 +175,7 @@ public:
+ 		}
+ 	}
+ };
+-#elif defined(__unix__) || defined(__MVS__)
++#elif defined(__unix__) || defined(__MVS__) || defined(ESP_PLATFORM)
+ //---------------------------------------------------------
+ // Semaphore (POSIX, Linux, zOS aka MVS)
+ //---------------------------------------------------------
+@@ -191,6 +192,11 @@ public:
+ 	{
+ 		assert(initialCount >= 0);
+ 		int rc = sem_init(&m_sema, 0, initialCount);
++#ifdef ESP_PLATFORM
++		if (rc != 0) {
++			throw std::bad_alloc();
++		}
++#endif
+ 		assert(rc == 0);
+ 		(void)rc;
+ 	}
 diff --git a/third_party/fsst/libfsst.cpp b/third_party/fsst/libfsst.cpp
 index 875fddcae80..649cd6bbc44 100644
 --- a/third_party/fsst/libfsst.cpp
@@ -1089,7 +1282,7 @@ index afaca195f3f..6a4c4f08c53 100755
  #define SNAPPY_MINOR 1
  #define SNAPPY_PATCHLEVEL 7
 diff --git a/third_party/utf8proc/utf8proc.cpp b/third_party/utf8proc/utf8proc.cpp
-index bfea42744e4..5a2573d8a5f 100644
+index 917b64cc870..3572471fe5c 100644
 --- a/third_party/utf8proc/utf8proc.cpp
 +++ b/third_party/utf8proc/utf8proc.cpp
 @@ -522,8 +522,10 @@ UTF8PROC_DLLEXPORT utf8proc_ssize_t utf8proc_decompose_char(utf8proc_int32_t uc,
@@ -1117,173 +1310,27 @@ index fc4d18b2e48..9434a7aad46 100644
              state->v1 = XXH32_round(state->v1, XXH_readLE32(p32, endian)); p32++;
              state->v2 = XXH32_round(state->v2, XXH_readLE32(p32, endian)); p32++;
              state->v3 = XXH32_round(state->v3, XXH_readLE32(p32, endian)); p32++;
-diff --git a/src/main/config.cpp b/src/main/config.cpp
---- a/src/main/config.cpp
-+++ b/src/main/config.cpp
-@@ -681,7 +681,9 @@
- }
-
- idx_t DBConfig::GetSystemMaxThreads(FileSystem &fs) {
--#ifdef DUCKDB_NO_THREADS
-+#if defined(ESP_PLATFORM)
-+	return 2;
-+#elif defined(DUCKDB_NO_THREADS)
- 	return 1;
- #else
- 	idx_t physical_cores = std::thread::hardware_concurrency();
-@@ -700,7 +702,7 @@
- }
-
- idx_t DBConfig::GetSystemMaxAsyncThreads(FileSystem &fs) {
--#ifdef DUCKDB_NO_THREADS
-+#if defined(DUCKDB_NO_THREADS) || defined(ESP_PLATFORM)
- 	return 0;
- #else
- 	return MinValue<idx_t>(4 * GetSystemMaxThreads(fs), 256);
-diff --git a/src/main/settings/custom_settings.cpp b/src/main/settings/custom_settings.cpp
---- a/src/main/settings/custom_settings.cpp
-+++ b/src/main/settings/custom_settings.cpp
-@@ -1057,6 +1057,11 @@
- 		throw InvalidInputException("external_threads must be a positive integer");
- 	}
- 	auto new_external_threads = input.GetValue<uint64_t>();
-+#ifdef ESP_PLATFORM
-+	if (new_external_threads != 1) {
-+		throw InvalidInputException("ESP32-P4 requires one external query thread");
-+	}
-+#endif
- 	if (info.db) {
- 		TaskScheduler::GetScheduler(*info.db).SetThreads(info.config.options.maximum_threads, new_external_threads);
- 	}
-@@ -1737,6 +1742,11 @@
- 	if (new_val < 1) {
- 		throw SyntaxException("Must have at least 1 thread!");
- 	}
-+#ifdef ESP_PLATFORM
-+	if (new_val > 2) {
-+		throw InvalidInputException("ESP32-P4 supports at most two query threads");
-+	}
-+#endif
- 	auto new_maximum_threads = NumericCast<idx_t>(new_val);
- 	if (db) {
- 		TaskScheduler::GetScheduler(*db).SetThreads(new_maximum_threads, Settings::Get<ExternalThreadsSetting>(config));
-@@ -1775,6 +1785,11 @@
- 	if (new_val < 0) {
- 		throw SyntaxException("Cannot have negative async_threads!");
- 	}
-+#ifdef ESP_PLATFORM
-+	if (new_val != 0) {
-+		throw InvalidInputException("ESP32-P4 does not support async query workers");
-+	}
-+#endif
- 	auto new_async_threads = NumericCast<idx_t>(new_val);
- 	if (db) {
- 		TaskScheduler::GetScheduler(*db).SetAsyncThreads(new_async_threads);
-diff --git a/third_party/concurrentqueue/lightweightsemaphore.h b/third_party/concurrentqueue/lightweightsemaphore.h
---- a/third_party/concurrentqueue/lightweightsemaphore.h
-+++ b/third_party/concurrentqueue/lightweightsemaphore.h
-@@ -9,6 +9,7 @@
- #include <atomic>
- #include <cassert>
- #include <type_traits> // For std::make_signed<T>
-+#include <new>
-
- // VS2012 doesn't support deleted functions.
- // In this case, we declare the function normally but don't define it.
-@@ -35,7 +36,7 @@
- }
- #elif defined(__MACH__)
- #include <mach/mach.h>
--#elif defined(__unix__)
-+#elif defined(__unix__) || defined(ESP_PLATFORM)
- #include <semaphore.h>
- #include <chrono>
- #elif defined(__MVS__)
-@@ -174,7 +175,7 @@
- 		}
- 	}
- };
--#elif defined(__unix__) || defined(__MVS__)
-+#elif defined(__unix__) || defined(__MVS__) || defined(ESP_PLATFORM)
- //---------------------------------------------------------
- // Semaphore (POSIX, Linux, zOS aka MVS)
- //---------------------------------------------------------
-@@ -191,6 +192,11 @@
- 	{
- 		assert(initialCount >= 0);
- 		int rc = sem_init(&m_sema, 0, initialCount);
-+#ifdef ESP_PLATFORM
-+		if (rc != 0) {
-+			throw std::bad_alloc();
-+		}
-+#endif
- 		assert(rc == 0);
- 		(void)rc;
- 	}
-diff --git a/src/parallel/task_scheduler_pool.cpp b/src/parallel/task_scheduler_pool.cpp
---- a/src/parallel/task_scheduler_pool.cpp
-+++ b/src/parallel/task_scheduler_pool.cpp
-@@ -204,9 +204,13 @@
- 					SetThreadAffinity(*worker_thread, available_cpus, threads.size());
- 				}
- 			} catch (std::exception &ex) {
-+#ifdef ESP_PLATFORM
-+				throw;
-+#else
- 				// thread constructor failed - this can happen when the system has too many threads allocated
- 				// in this case we cannot allocate more threads - stop launching them
- 				break;
-+#endif
- 			}
- 			auto thread_wrapper = make_uniq<TaskSchedulerThread>(std::move(worker_thread));
-
-diff --git a/src/parallel/task_scheduler_queue.cpp b/src/parallel/task_scheduler_queue.cpp
---- a/src/parallel/task_scheduler_queue.cpp
-+++ b/src/parallel/task_scheduler_queue.cpp
-@@ -5,6 +5,9 @@
- #ifndef DUCKDB_NO_THREADS
- #include "concurrentqueue.h"
- #endif
-+#ifdef ESP_PLATFORM
-+#include "esp_heap_caps.h"
-+#endif
-
- namespace duckdb {
-
-@@ -14,6 +17,14 @@
-
- #ifndef DUCKDB_NO_THREADS
- struct TaskQueueTraits : public duckdb_moodycamel::ConcurrentQueueDefaultTraits {
-+#ifdef ESP_PLATFORM
-+	static void *malloc(size_t size) {
-+		return heap_caps_aligned_alloc(alignof(std::max_align_t), size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-+	}
-+	static void free(void *ptr) {
-+		heap_caps_free(ptr);
-+	}
-+#endif
- 	//! Consumers move on to the next producer after this many tasks (default: 256)
- 	static constexpr uint32_t EXPLICIT_CONSUMER_CONSUMPTION_QUOTA_BEFORE_ROTATE = 16;
- };
 diff --git a/tools/shell/include/shell_renderer.hpp b/tools/shell/include/shell_renderer.hpp
+index dc072ce6fbd..53de144833b 100644
 --- a/tools/shell/include/shell_renderer.hpp
 +++ b/tools/shell/include/shell_renderer.hpp
-@@ -50,6 +50,9 @@
+@@ -50,6 +50,9 @@ struct RenderingQueryResult {
  	vector<unique_ptr<duckdb::DataChunk>> chunks;
  	bool exhausted_result = false;
  	idx_t loaded_row_count = 0;
 +#ifdef ESP_PLATFORM
 +	idx_t render_bytes = 0;
 +#endif
- 
+
  	idx_t ColumnCount() const {
  		return metadata.ColumnCount();
 diff --git a/tools/shell/linenoise/highlighting.cpp b/tools/shell/linenoise/highlighting.cpp
+index ae76682b9d9..631d5bff115 100644
 --- a/tools/shell/linenoise/highlighting.cpp
 +++ b/tools/shell/linenoise/highlighting.cpp
-@@ -86,7 +86,7 @@
+@@ -89,7 +89,7 @@ static vector<highlightToken> GetDotCommandTokens(char *buf, size_t len) {
  	tokens.push_back(dot_token);
- 
+
  	for (idx_t i = 0; i + 1 < len; i++) {
 -		if (Linenoise::IsSpace(buf[i])) {
 +		if ((buf[i] == ' ' || buf[i] == '\r' || buf[i] == '\n' || buf[i] == '\t')) {
@@ -1291,6 +1338,7 @@ diff --git a/tools/shell/linenoise/highlighting.cpp b/tools/shell/linenoise/high
  			argument_token.type = tokenType::TOKEN_STRING_CONSTANT;
  			argument_token.start = i + 1;
 diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
+index 80e65459a57..db6c73a961d 100644
 --- a/tools/shell/shell.cpp
 +++ b/tools/shell/shell.cpp
 @@ -100,6 +100,11 @@
@@ -1304,22 +1352,22 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
 +#endif
  #include "duckdb/main/error_manager.hpp"
  #include "duckdb/main/client_config.hpp"
- 
-@@ -193,6 +198,10 @@
- 	struct timeval ru_utime; /* user CPU time used */
- 	struct timeval ru_stime; /* system CPU time used */
- };
+
+@@ -196,6 +201,10 @@ struct rusage {
+ #define getrusage(A, B) memset(B, 0, sizeof(*B))
+ #endif
+
++#ifdef ESP_PLATFORM
 +#define getrusage(A, B) memset(B, 0, sizeof(*B))
 +#endif
 +
-+#ifdef ESP_PLATFORM
- #define getrusage(A, B) memset(B, 0, sizeof(*B))
- #endif
- 
-@@ -399,6 +408,17 @@
+ /* Saved resource information for the beginning of an operation */
+ static struct rusage sBegin;     /* CPU time at start */
+ static duckdb::TimePoint tBegin; /* Monotonic time at start */
+@@ -399,6 +408,17 @@ void ShellState::Print(const char *str) {
  	Print(PrintOutput::STDOUT, str);
  }
- 
+
 +#ifdef ESP_PLATFORM
 +static string esp_cli_path(const string &path) {
 +	if (path.empty() || path == ":memory:") return path;
@@ -1334,9 +1382,9 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  /* Indicate out-of-memory and exit. */
  static void shell_out_of_memory(void) {
  	fprintf(stderr, "Error: out of memory\n");
-@@ -406,6 +426,10 @@
+@@ -406,6 +426,10 @@ static void shell_out_of_memory(void) {
  }
- 
+
  ShellState::ShellState() : seenInterrupt(0), program_name("duckdb") {
 +#ifdef ESP_PLATFORM
 +	enableTimer = false;
@@ -1345,66 +1393,59 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	config.error_manager->AddCustomError(
  	    duckdb::ErrorType::UNSIGNED_EXTENSION,
  	    "Extension \"%s\" could not be loaded because its signature is either missing or invalid and unsigned "
-@@ -419,6 +443,11 @@
- }
- 
- ShellState::~ShellState() {
+@@ -424,6 +448,10 @@ ShellState::~ShellState() {
+ 	doXdgOpen = 0;
+ 	ResetOutput();
+ 	ClearTempFile();
 +#ifdef ESP_PLATFORM
-+	ResetOutput();
 +	CloseOutputFile(pLog);
 +	pLog = nullptr;
 +#endif
  }
- 
+
  void ShellState::Destroy() {
-@@ -533,6 +562,12 @@
+@@ -538,6 +566,11 @@ static char *local_getline(char *&zLine, FILE *in) {
  	idx_t n = 0;
- 
+
  	while (1) {
 +#ifdef ESP_PLATFORM
 +		if (n >= 16384) {
-+			free(zLine);
 +			throw duckdb::InvalidInputException("SQL input line exceeds 16 KiB");
 +		}
 +#endif
  		if (n + 100 > nLine) {
  			nLine = nLine * 2 + 100;
- 			zLine = (char *)realloc(zLine, nLine);
-@@ -581,6 +616,15 @@
- 		// don't print prompt in this scenario
+ 			auto new_line = (char *)realloc(zLine, nLine);
+@@ -589,6 +622,16 @@ char *ShellState::OneInputLine(FILE *in, char *&zPrior, int isContinuation) {
  		return local_getline(zPrior, in);
  	}
-+
+
 +#ifdef ESP_PLATFORM
 +	free(zPrior);
++	zPrior = nullptr;
 +	errno = 0;
 +	auto prompt = isContinuation ? string(continuePrompt) : main_prompt->GeneratePrompt(*this);
 +	auto line = linenoise(prompt.c_str());
 +	if (!line && errno == EAGAIN) return strdup("\3");
 +	return line;
 +#endif
- 
++
  #ifdef HAVE_LINENOISE
  	if (rl_version == ReadLineVersion::LINENOISE) {
-@@ -776,6 +820,9 @@
+ 		// use linenoise
+@@ -830,7 +873,11 @@ void duckdb_shell::IgnoreInterrupts() {
  }
- 
+
  void ShellState::Exit(int exit_code) {
 +#ifdef ESP_PLATFORM
 +	throw duckdb::InvalidInputException("DuckDB CLI exit requested (%d)", exit_code);
 +#else
- 	if (GetReference()) {
- 		GetReference()->PrintExitHint(exit_code);
- 	}
-@@ -789,6 +836,7 @@
- 	}
- 	// then exit
- 	exit(exit_code);
+ 	throw ShellExitException(exit_code);
 +#endif
  }
- 
- extern "C" {
-@@ -880,7 +928,11 @@
+
+ void ShellState::ClearInterrupt() {
+@@ -890,7 +937,11 @@ void ShellState::SetTableName(const char *zName) {
  */
  void ShellState::RunTableDumpQuery(const string &zSelect) {
  	auto &con = *conn;
@@ -1416,7 +1457,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	if (result->HasError()) {
  		PrintF("/**** ERROR: %s *****/\n", result->GetError().c_str());
  		AddError();
-@@ -967,7 +1019,11 @@
+@@ -977,7 +1028,11 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
  		// we need to materialize the result prior to rendering
  		result = con.Query(std::move(statement), duckdb::ChunkFormat::BufferManaged());
  	} else {
@@ -1428,7 +1469,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	}
  	auto &res = *result;
  	if (res.HasError()) {
-@@ -1445,7 +1501,11 @@
+@@ -1456,7 +1511,11 @@ FILE *ShellState::OpenOutputFile(const char *zFile, int bTextMode) {
  	} else if (strcmp(zFile, "off") == 0) {
  		f = 0;
  	} else {
@@ -1440,17 +1481,17 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  		f = fopen(expanded_path.c_str(), bTextMode ? "w" : "wb");
  		if (f == 0) {
  			PrintF(PrintOutput::STDERR, "Error: cannot open \"%s\"\n", zFile);
-@@ -1547,7 +1607,7 @@
+@@ -1558,7 +1617,7 @@ bool ShellState::ShouldUsePager(ShellRenderer &renderer, RenderingQueryResult &r
  }
- 
+
  void ShellState::StartPagerDisplay() {
 -#if !defined(_WIN32) && !defined(WIN32)
 +#if !defined(_WIN32) && !defined(WIN32) && !defined(ESP_PLATFORM)
  	// turn sigpipe trap into an interrupt while displaying the pager
  	// this allows us to interrupt display after the pager is exited by the user
  	signal(SIGPIPE, InterruptHandler);
-@@ -1556,13 +1616,16 @@
- 
+@@ -1567,13 +1626,16 @@ void ShellState::StartPagerDisplay() {
+
  void ShellState::FinishPagerDisplay() {
  	ShellState::Get().pager_is_active = false;
 -#if !defined(_WIN32) && !defined(WIN32)
@@ -1459,7 +1500,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	signal(SIGPIPE, SIG_DFL);
  #endif
  }
- 
+
  unique_ptr<PagerState> ShellState::SetupPager() {
 +#ifdef ESP_PLATFORM
 +	return nullptr;
@@ -1467,7 +1508,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	uint32_t win_console_cp_before_pager = 0;
  #if defined(_WIN32) || defined(WIN32)
  	if (pager_command == "more") { // UTF-8 mode must be used with "more" pager
-@@ -1584,6 +1647,7 @@
+@@ -1595,6 +1657,7 @@ unique_ptr<PagerState> ShellState::SetupPager() {
  	out = pager_out;
  	outfile = "|" + pager_command;
  	return make_uniq<PagerState>(*this, win_console_cp_before_pager);
@@ -1475,7 +1516,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  }
  /*
  ** Change the output file back to stdout.
-@@ -1898,6 +1962,10 @@
+@@ -1909,6 +1972,10 @@ bool ShellState::ImportData(const vector<string> &args) {
  		PrintHelp("import");
  		return false;
  	}
@@ -1486,7 +1527,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	if (function.empty()) {
  		// derive function to use from file extension
  		// FIXME: get this list from the system somehow
-@@ -1936,6 +2004,12 @@
+@@ -1947,6 +2014,12 @@ bool ShellState::ImportData(const vector<string> &args) {
  	}
  	ClearInterrupt();
  	// check if the table exists
@@ -1499,27 +1540,27 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	auto &con = *conn;
  	auto needCommit = con.context->transaction.IsAutoCommit();
  	if (needCommit) {
-@@ -2079,9 +2153,15 @@
+@@ -2090,9 +2163,15 @@ bool ShellState::OpenDatabase(const vector<string> &args) {
  		zNewFilename = args[iName];
  	}
- 
+
 +#ifdef ESP_PLATFORM
 +	zNewFilename = esp_cli_path(zNewFilename);
 +#endif
  	/* Close the existing database */
+-	db.reset();
 +#ifdef ESP_PLATFORM
 +	last_result.reset();
 +#endif
-+	conn.reset();
- 	db.reset();
--	conn.reset();
- 
+ 	conn.reset();
++	db.reset();
+
  	if (!zNewFilename.empty()) {
  		if (newFlag) {
-@@ -2222,7 +2302,13 @@
- 	return true;
- }
- 
+@@ -2255,7 +2334,13 @@ struct ShellInputFile {
+ 	const string *active_file;
+ };
+
 +#ifdef ESP_PLATFORM
 +extern bool esp_cli_read_file(ShellState &state, const string &file);
 +#endif
@@ -1530,27 +1571,15 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	if (safe_mode) {
  		PrintF(PrintOutput::STDERR, ".read cannot be used in -safe mode\n");
  		return false;
-@@ -2247,6 +2333,7 @@
- 	in = inSaved;
- 	lineno = savedLineno;
- 	return rc == 0;
+@@ -2272,6 +2357,7 @@ bool ShellState::ReadFromFile(const string &file) {
+ 		return false;
+ 	}
+ 	return ProcessInput(InputMode::FILE) == 0;
 +#endif
  }
- 
+
  bool ShellState::DisplaySchemas(const vector<string> &args) {
-@@ -2541,7 +2628,11 @@
- 		if (!style.layout_on.empty()) {
- 			style.layout_off = ShellHighlight::ResetTerminalCode();
- 		}
-+		#ifdef ESP_PLATFORM
-+		if (highlight_mode == HighlightMode::LIGHT_MODE) {
-+#else
- 		if (linenoiseGetTerminalColorMode() == LINENOISE_LIGHT_MODE) {
-+#endif
- 			style.heading_on = ShellHighlight::TerminalCode(PrintColor::BLACK, PrintIntensity::BOLD);
- 			style.path_on = ShellHighlight::TerminalCode(PrintColor::BLACK, PrintIntensity::STANDARD);
- 		} else {
-@@ -3004,7 +3095,7 @@
+@@ -3041,7 +3127,7 @@ bool ShellState::SQLIsComplete(const char *zSql) {
  				if (zSql[idx] == '_') {
  					continue;
  				}
@@ -1559,9 +1588,9 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  					continue;
  				}
  				// the first character CANNOT be a numeric, only subsequent characters
-@@ -3061,38 +3152,54 @@
+@@ -3098,38 +3184,54 @@ bool ShellState::SQLIsComplete(const char *zSql) {
  }
- 
+
  void ShellState::ShellAddHistory(const char *history) {
 +#ifdef ESP_PLATFORM
 +	linenoiseHistoryAdd(history);
@@ -1573,7 +1602,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  #endif
 +#endif
  }
- 
+
  int ShellState::ShellLoadHistory(const char *path) {
 +#ifdef ESP_PLATFORM
 +	return linenoiseHistoryLoad(path);
@@ -1586,7 +1615,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	return 0;
 +#endif
  }
- 
+
  int ShellState::ShellSaveHistory(const char *path) {
 +#ifdef ESP_PLATFORM
 +	return linenoiseHistorySave(path);
@@ -1599,7 +1628,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  	return 0;
 +#endif
  }
- 
+
  int ShellState::ShellSetHistoryMaxLength(idx_t max_length) {
 +#ifdef ESP_PLATFORM
 +	return linenoiseHistorySetMaxLen(static_cast<int>(max_length));
@@ -1614,34 +1643,7 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
  }
  /*
  ** Run a single line of SQL.  Return the number of errors.
-@@ -3135,6 +3242,12 @@
- int ShellState::ProcessInput(InputMode mode) {
- 	char *zLine = nullptr; /* A single input line */
- 	char *zSql = nullptr;  /* Accumulated SQL text */
-+#ifdef ESP_PLATFORM
-+	struct InputCleanup {
-+		char *&line, *&sql;
-+		~InputCleanup() { free(line); free(sql); }
-+	} cleanup{zLine, zSql};
-+#endif
- 	idx_t nLine;           /* Length of current line */
- 	idx_t nSql = 0;        /* Bytes of zSql[] used */
- 	idx_t nAlloc = 0;      /* Allocated zSql[] space */
-@@ -3145,7 +3258,13 @@
- 	lineno = 0;
- 	while (errCnt == 0 || !GetBailOnError(mode) || (!in && stdin_is_interactive)) {
- 		fflush(out);
-+#ifdef ESP_PLATFORM
-+		auto prior_line = zLine;
-+		zLine = nullptr;
-+		zLine = OneInputLine(in, prior_line, nSql > 0);
-+#else
- 		zLine = OneInputLine(in, zLine, nSql > 0);
-+#endif
- 		if (!zLine) {
- 			/* End of input */
- 			if (!in && stdin_is_interactive && !started_as_client && conn && conn->context &&
-@@ -3221,6 +3340,14 @@
+@@ -3268,6 +3370,14 @@ int ShellState::ProcessInput(InputMode mode) {
  			continue;
  		}
  		nLine = StringLength(zLine);
@@ -1655,22 +1657,12 @@ diff --git a/tools/shell/shell.cpp b/tools/shell/shell.cpp
 +#endif
  		if (nSql + nLine + 2 >= nAlloc) {
  			nAlloc = nSql + nLine + 100;
- 			zSql = (char *)realloc(zSql, nAlloc);
-@@ -3260,8 +3387,10 @@
- 	if (nSql && !_all_whitespace(zSql)) {
- 		errCnt += RunOneSqlLine(mode, zSql);
- 	}
-+#ifndef ESP_PLATFORM
- 	free(zSql);
- 	free(zLine);
-+#endif
- 	return errCnt > 0;
- }
- 
+ 			auto new_sql = (char *)realloc(zSql, nAlloc);
 diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata_command.cpp
+index f6be051ce5e..7f033e22f36 100644
 --- a/tools/shell/shell_metadata_command.cpp
 +++ b/tools/shell/shell_metadata_command.cpp
-@@ -935,11 +935,15 @@
+@@ -941,11 +941,15 @@ static const MetadataCommand metadata_commands[] = {
  #endif
      {"bail", 2, ToggleBail, "on|off", "Stop after hitting an error.  Default OFF", 3, ""},
      {"binary", 2, ToggleBinary, "on|off", "Turn binary output on or off.  Default OFF", 3, ""},
@@ -1686,7 +1678,7 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
  #ifdef HAVE_LINENOISE
      {"comment", 2, SetHighlightingColor<DeprecatedHighlightColors::COMMENT>, "?COLOR?",
       "DEPRECATED: Sets the syntax highlighting color used for comment values", 0, nullptr},
-@@ -965,17 +969,25 @@
+@@ -971,17 +975,25 @@ static const MetadataCommand metadata_commands[] = {
      },
      {"display_colors", 0, DisplayColors, "[bold|underline]", "Display all terminal colors and their names", 0, ""},
      {"echo", 2, ToggleEcho, "on|off", "Turn command echo on or off", 3, ""},
@@ -1712,7 +1704,7 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
      {"headers", 2, ToggleHeaders, "on|off", "Turn display of headers on or off", 0, ""},
      {"help", 0, ShowHelp, "?-all? ?PATTERN?", "Show help text for PATTERN (.help agent: the agent mode)", 0, ""},
      {"highlight", 2, ToggleHighlighting, "on|off", "Toggle syntax highlighting in the shell on/off", 0, ""},
-@@ -984,8 +996,10 @@
+@@ -990,8 +1002,10 @@ static const MetadataCommand metadata_commands[] = {
      {"highlight_mode", 2, ToggleHighlightMode, "mixed|dark|light", "Toggle the highlight mode to dark or light mode", 0,
       ""},
      {"highlight_results", 2, ToggleHighlightResult, "on|off", "Turn highlighting of results on or off", 0, ""},
@@ -1723,7 +1715,7 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
      {"import", 0, ImportData, "FILE TABLE", "Import data from FILE into TABLE", 0,
       "Options:\n\t--csv\tImport data from CSV (read_csv)\n\t--json\tImport data from JSON "
       "(read_json)\n\t--parquet\tImport data from Parquet (read_parquet)\n\t--[parameter] [value]\tProvides a parameter "
-@@ -1000,12 +1014,14 @@
+@@ -1006,12 +1020,14 @@ static const MetadataCommand metadata_commands[] = {
  #endif
      {"last", 1, RenderLastResult, "",
       "Render the last result in full (after EXPLAIN ANALYZE: the full, expanded query tree)", 0, ""},
@@ -1738,7 +1730,7 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
      {"maxbytes", 0, SetMaxBytes, "COUNT",
       "Sets the maximum number of bytes of rows for display (0 = all). Only for markdown mode in -agent mode.", 0, ""},
      {"maxcellwidth", 0, SetMaxCellWidth, "COUNT",
-@@ -1038,11 +1054,13 @@
+@@ -1044,11 +1060,13 @@ static const MetadataCommand metadata_commands[] = {
      {"output", 0, SetOutput, "?FILE?", "Send output to FILE or stdout if FILE is omitted", 0,
       "If FILE begins with '|' then open as a pipe\n\t--bom\tPut a UTF8 byte-order mark at the beginning\n\t-e\tSend "
       "output to the system text editor\n\t-x\tSend output as CSV to a spreadsheet (same as \".excel\")"},
@@ -1752,8 +1744,8 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
      {"print", 0, PrintArguments, "STRING...", "Print literal STRING", 3, ""},
      {"progress_bar", 0, ConfigureProgressBar, "OPTIONS", "Configure the progress bar display", 0,
       "OPTIONS:\n\t--add [COMPONENT]\tAdd a component to the progress bar\n\t--clear\tClear all components"},
-@@ -1050,8 +1068,10 @@
- 
+@@ -1056,8 +1074,10 @@ static const MetadataCommand metadata_commands[] = {
+
      {"quit", 0, QuitProcess, "", "Exit this program", 0, ""},
      {"read", 2, ReadFromFile, "FILE", "Read input from FILE", 3, ""},
 +#ifndef ESP_PLATFORM
@@ -1763,7 +1755,7 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
  #ifdef HAVE_LINENOISE
      {"render_completion", 2, ToggleCompletionRendering, "on|off",
       "Toggle displaying of completion prompts in the shell on/off", 0, ""},
-@@ -1060,28 +1080,38 @@
+@@ -1066,28 +1086,38 @@ static const MetadataCommand metadata_commands[] = {
      {"rows", 1, SetRowRendering, "", "Row-wise rendering of query results (default)", 0, ""},
      {"safe_mode", 0, ShellState::EnableSafeMode, "", "Enable safe-mode", 0, ""},
      {"separator", 0, ShellState::SetSeparator, "COL ?ROW?", "Change the column and row separators", 0, ""},
@@ -1776,7 +1768,7 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
       "it is stored, without formatting\n\t--no-format\tAlias for --no-indent\n\t--indent\tForce pretty-printing (the "
       "default)\n\t--format\tAlias for --indent"},
 +#ifndef ESP_PLATFORM
-     {"shell", 0, RunShellCommand, "CMD ARGS...", "Run CMD ARGS... in a system shell", 0, ""},
+     {"shell", 0, RunShellCommand, "CMD ARGS...", "Run CMD ARGS... in a system shell", 0, "", true},
 +#endif
      {"show", 1, ShowConfiguration, "", "Show the current values for various settings", 0, ""},
  #ifdef HAVE_LINENOISE
@@ -1785,7 +1777,7 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
      {"startup_text", 2, SetStartupText, "none|version|all",
       "Start-up text to display. Set this as the first line in .duckdbrc", 0, ""},
 +#ifndef ESP_PLATFORM
-     {"system", 0, RunShellCommand, "CMD ARGS...", "Run CMD ARGS... in a system shell", 0, ""},
+     {"system", 0, RunShellCommand, "CMD ARGS...", "Run CMD ARGS... in a system shell", 0, "", true},
 +#endif
      {"tables", 0, ShowTables, "?TABLE?", "List names of tables matching LIKE pattern TABLE", 2, ""},
      {"thousand_sep", 0, SetThousandSep, "SEP",
@@ -1803,9 +1795,10 @@ diff --git a/tools/shell/shell_metadata_command.cpp b/tools/shell/shell_metadata
       "Negative values right-justify"},
  #if defined(_WIN32) || defined(WIN32)
 diff --git a/tools/shell/shell_renderer.cpp b/tools/shell/shell_renderer.cpp
+index 8a40251f64e..4a0f98e1863 100644
 --- a/tools/shell/shell_renderer.cpp
 +++ b/tools/shell/shell_renderer.cpp
-@@ -416,6 +416,26 @@
+@@ -416,6 +416,26 @@ bool RenderingQueryResult::TryConvertChunk() {
  			}
  		}
  	}
@@ -1832,37 +1825,3 @@ diff --git a/tools/shell/shell_renderer.cpp b/tools/shell/shell_renderer.cpp
  	loaded_row_count += chunk->size();
  	chunks.push_back(std::move(varchar_chunk));
  	return true;
-diff --git a/src/common/thread_util.cpp b/src/common/thread_util.cpp
---- a/src/common/thread_util.cpp
-+++ b/src/common/thread_util.cpp
-@@ -5,6 +5,11 @@
- #include "duckdb/common/helper.hpp"
- #include "duckdb/common/time_point.hpp"
- #include "duckdb/main/client_context.hpp"
-+
-+#ifdef ESP_PLATFORM
-+#include "freertos/FreeRTOS.h"
-+#include "freertos/task.h"
-+#endif
- 
- namespace duckdb {
- 
-@@ -31,12 +36,17 @@
- }
- 
- thread_id ThreadUtil::GetThreadId() {
-+#ifdef ESP_PLATFORM
-+	// DuckDB also runs in SDK tasks that are not registered as pthreads.
-+	return thread_id(reinterpret_cast<std::thread::native_handle_type>(xTaskGetCurrentTaskHandle()));
-+#else
- 	return std::this_thread::get_id();
-+#endif
- }
- 
- string ThreadUtil::GetThreadIdString() {
- 	std::ostringstream ss;
--	ss << std::this_thread::get_id();
-+	ss << GetThreadId();
- 	return ss.str();
- }
- 

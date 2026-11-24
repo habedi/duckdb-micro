@@ -5,10 +5,11 @@ export IDF_PATH="$PROBE_ROOT/external/esp-idf"
 export IDF_TOOLS_PATH="${IDF_TOOLS_PATH:-$PROBE_ROOT/build/espressif}"
 . "$IDF_PATH/export.sh" >/dev/null
 cd "$PROBE_ROOT"
-DUCKDB_COMMIT=d54cbbe3df17e8e5ce68312f483b4155836112aa
+DUCKDB_COMMIT=8d78114e90a53823803660bf821f6073ac87da8c
 if test "$(git -C external/duckdb rev-parse HEAD)" != "$DUCKDB_COMMIT"; then
   # Also accept a committed copy of exactly our patched release tree.
-  git -C external/duckdb diff --no-ext-diff --abbrev=11 "$DUCKDB_COMMIT" -- | cmp - src/patches/duckdb-esp32p4.diff
+  git -C external/duckdb -c diff.suppressBlankEmpty=true diff --no-ext-diff --abbrev=11 "$DUCKDB_COMMIT" -- |
+    cmp - src/patches/duckdb-esp32p4.diff
 fi
 if ! git -C external/duckdb apply --reverse --check "$PROBE_ROOT/src/patches/duckdb-esp32p4.diff" 2>/dev/null; then
   git -C external/duckdb apply --check "$PROBE_ROOT/src/patches/duckdb-esp32p4.diff"
@@ -52,7 +53,7 @@ cmake -S external/duckdb -B build/duckdb -G Ninja \
     "-DCMAKE_C_FLAGS=$C_FLAGS" \
     "-DCMAKE_CXX_FLAGS=$CXX_FLAGS" \
     "${EXTRA_OPTS[@]}" \
-    -DDUCKDB_EXPLICIT_PLATFORM=esp32p4 -DDUCKDB_EXPLICIT_VERSION=v2.0.0 -DDUCKDB_OPTIMIZATION_PROFILE=NONE \
+    -DDUCKDB_EXPLICIT_PLATFORM=esp32p4 -DDUCKDB_EXPLICIT_VERSION=v2.0.1 -DDUCKDB_OPTIMIZATION_PROFILE=NONE \
     -DDISABLE_UNITY=ON -DDISABLE_THREADS=OFF -DDISABLE_RTTI=ON \
     -DSMALLER_BINARY=ON -DENABLE_JEMALLOC=OFF \
     -DENABLE_EXTENSION_LOAD=OFF -DENABLE_BUILTIN_HTTPLIB=OFF \
